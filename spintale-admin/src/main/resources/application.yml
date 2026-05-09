@@ -126,9 +126,12 @@ springdoc:
     tags-sorter: alpha
   group-configs:
     - group: 'default'
-      display-name: '测试模块'
+      display-name: 'SpinTale APIs'
       paths-to-match: '/**'
-      packages-to-scan: com.spintale.web.controller.tool
+      packages-to-scan:
+        - com.spintale.web.controller
+        - com.spintale.quartz.controller
+        - com.spintale.generator.controller
 
 # 防盗链配置
 referer:

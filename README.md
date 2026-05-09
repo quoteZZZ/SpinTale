@@ -1,115 +1,214 @@
-<p align="center">
-	<img alt="logo" src="https://oscimg.oschina.net/oscnet/up-d3d0a9303e11d522a06cd263f3079027715.png">
-</p>
-<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">SpinTale v3.9.2</h1>
-<h4 align="center">基于SpringBoot+Vue前后端分离的Java快速开发框架</h4>
-<p align="center">
-	<a href="https://gitee.com/y_project/SpinTale-Vue/stargazers"><img src="https://gitee.com/y_project/SpinTale-Vue/badge/star.svg?theme=dark"></a>
-	<a href="https://gitee.com/y_project/SpinTale-Vue"><img src="https://img.shields.io/badge/SpinTale-v3.9.2-brightgreen.svg"></a>
-	<a href="https://gitee.com/y_project/SpinTale-Vue/blob/master/LICENSE"><img src="https://img.shields.io/github/license/mashape/apistatus.svg"></a>
-</p>
+# SpinTale Backend
 
-## 平台简介
+SpinTale Backend 是 SpinTale 项目的后端服务，基于 Spring Boot 4、Spring Security、MyBatis、Druid、Redis、JWT、Quartz 和 Springdoc 构建。当前仓库只维护后端代码，前端项目独立放在 `D:\GitCode\SpinTale1.0\SpinTale-Vue`。
 
-若依是一套全部开源的快速开发平台，毫无保留给个人及企业免费使用。
+## 当前状态
 
-* 前端采用Vue、Element UI。
-* 后端采用Spring Boot、Spring Security、Redis & Jwt。
-* 权限认证使用Jwt，支持多终端认证系统。
-* 支持加载动态权限菜单，多方式轻松权限控制。
-* 高效率开发，使用代码生成器可以一键生成前后端代码。
-* 阿里云折扣场：[点我进入](http://aly.spintale.vip)，腾讯云秒杀场：[点我进入](http://txy.spintale.vip)&nbsp;&nbsp;
+| 项目 | 说明 |
+| --- | --- |
+| 后端仓库 | `D:\GitCode\SpinTale1.0\SpinTale` |
+| 前端仓库 | `D:\GitCode\SpinTale1.0\SpinTale-Vue` |
+| Maven 坐标 | `com.spintale:spintale:3.9.2` |
+| 启动模块 | `spintale-admin` |
+| 启动类 | `com.spintale.SpinTaleApplication` |
+| 默认端口 | `8080` |
+| 接口根路径 | `/` |
+| 数据库 | MySQL `SpinTale` |
+| Redis | `localhost:6379` |
 
-# 版本分支
+## 技术栈
 
-SpinTale-Vue 后端项目提供 Spring Boot 2.x / 3.x / 4.x 多版本分支的并行维护。
+| 组件 | 当前版本或用途 |
+| --- | --- |
+| JDK | 17 |
+| Spring Boot | 4.0.3 |
+| MyBatis Spring Boot | 4.0.1 |
+| Druid | 1.2.28 |
+| PageHelper | 2.1.1 |
+| Fastjson2 | 2.0.61 |
+| Springdoc OpenAPI | 3.0.2 |
+| MySQL | 8.x |
+| Redis | 7.x |
+| Maven | 3.9.x |
 
-| 名称              | 说明                      | 地址                                                    |
-| :---------------- | :------------------------ | :------------------------------------------------------ |
-| master 默认分支   | Spring Boot 4.x (JDK 17+) | https://gitee.com/y_project/SpinTale-Vue                   |
-| springboot3 分支  | Spring Boot 3.x (JDK 17+) | https://gitee.com/y_project/SpinTale-Vue/tree/springboot3  |
-| springboot2 分支  | Spring Boot 2.x (JDK 8+)  | https://gitee.com/y_project/SpinTale-Vue/tree/springboot2  |  
+## 模块结构
 
-SpinTale-Vue 前端项目提供 Vue 2.x / 3.x / JavaScript TypeScript 版本均可混用搭配
+```text
+SpinTale
+├─ spintale-admin      # Web 启动入口、系统接口、监控接口、公共接口
+├─ spintale-common     # 通用工具、常量、注解、基础响应、Redis 工具
+├─ spintale-framework  # 安全认证、Web 配置、数据源、过滤器、异常处理
+├─ spintale-system     # 用户、角色、菜单、部门、岗位、字典、参数、公告
+├─ spintale-quartz     # 定时任务和任务日志
+├─ spintale-generator  # 代码生成器
+├─ sql                 # 初始化 SQL
+├─ bin                 # Windows 脚本
+└─ doc                 # 项目文档资料
+```
 
-| 项目名称      | **SpinTale-Vue** | **SpinTale-Vue3** | **SpinTale-Vue3-TypeScript**   |
-| :---          | :---          | :---           | :---                        |
-| **前端框架**  | Vue 2        | Vue 3          | Vue 3                       |
-| **脚本语言**  | JavaScript   | JavaScript     | TypeScript                  |
-| **构建工具**  | Vue CLI      | Vite           | Vite                        |
-| **UI 组件库** | Element UI   | Element Plus   | Element Plus                |
-| **状态管理**  | Vuex         | Pinia          | Pinia                       |
-| **路由管理**  | Vue Router 3 | Vue Router 4   | Vue Router 4                |
-| **核心特点**  | 1. 技术栈经典稳定<br>2. 社区资料丰富<br>3. 当前维护重心已转移 | 1. 现代前端技术栈<br>2. 开发体验与性能更优<br>3. 官方主推的活跃版本 | 1. 类型加持，减少沟通成本<br>2. 开发时有提示，效率更高<br>3. 多人协作企业级开发项目 |
-| **仓库地址**  | [SpinTale-Vue](https://gitee.com/y_project/SpinTale-Vue) | [SpinTale-Vue3](https://gitcode.com/yangzongzhuan/SpinTale-Vue3) | [SpinTale-Vue3-TypeScript](https://gitcode.com/yangzongzhuan/SpinTale-Vue3/tree/typescript) |
+## 本地环境
 
-## 内置功能
+当前推荐的本机安装路径如下，全部放在 D 盘根目录：
 
-1.  用户管理：用户是系统操作者，该功能主要完成系统用户配置。
-2.  部门管理：配置系统组织机构（公司、部门、小组），树结构展现支持数据权限。
-3.  岗位管理：配置系统用户所属担任职务。
-4.  菜单管理：配置系统菜单，操作权限，按钮权限标识等。
-5.  角色管理：角色菜单权限分配、设置角色按机构进行数据范围权限划分。
-6.  字典管理：对系统中经常使用的一些较为固定的数据进行维护。
-7.  参数管理：对系统动态配置常用参数。
-8.  通知公告：系统通知公告信息发布维护。
-9.  操作日志：系统正常操作日志记录和查询；系统异常信息日志记录和查询。
-10. 登录日志：系统登录日志记录查询包含登录异常。
-11. 在线用户：当前系统中活跃用户状态监控。
-12. 定时任务：在线（添加、修改、删除)任务调度包含执行结果日志。
-13. 代码生成：前后端代码的生成（java、html、xml、sql）支持CRUD下载 。
-14. 系统接口：根据业务代码自动生成相关的api接口文档。
-15. 服务监控：监视当前系统CPU、内存、磁盘、堆栈等相关信息。
-16. 缓存监控：对系统的缓存信息查询，命令统计等。
-17. 在线构建器：拖动表单元素生成相应的HTML代码。
-18. 连接池监视：监视当前系统数据库连接池状态，可进行分析SQL找出系统性能瓶颈。
+| 软件 | 路径 |
+| --- | --- |
+| IntelliJ IDEA | `D:\JetBrains\IntelliJ IDEA 2026.1.1` |
+| JDK | `D:\JDK` |
+| Maven | `D:\Maven` |
+| MySQL | `D:\MySQL` |
+| Redis | `D:\Redis` |
+| Navicat | `D:\Navicat16` |
+| Tiny RDM | `D:\TinyRDM` |
 
-## 在线体验
+PowerShell 临时环境变量示例：
 
-- admin/admin123  
-- 陆陆续续收到一些打赏，为了更好的体验已用于演示服务器升级。谢谢各位小伙伴。
+```powershell
+$env:JAVA_HOME='D:\JDK'
+$env:Path='D:\JDK\bin;D:\Maven\bin;D:\MySQL\bin;D:\Redis;' + $env:Path
+```
 
-演示地址：http://vue.spintale.vip  
-文档地址：http://doc.spintale.vip
+## 数据库和缓存
 
-## 演示图
+后端默认读取 `spintale-admin/src/main/resources/application.yml` 和 `application-druid.yml`。
 
-<table>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/cd1f90be5f2684f4560c9519c0f2a232ee8.jpg"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/1cbcf0e6f257c7d3a063c0e3f2ff989e4b3.jpg"/></td>
-    </tr>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-8074972883b5ba0622e13246738ebba237a.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-9f88719cdfca9af2e58b352a20e23d43b12.png"/></td>
-    </tr>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-39bf2584ec3a529b0d5a3b70d15c9b37646.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-936ec82d1f4872e1bc980927654b6007307.png"/></td>
-    </tr>
-	<tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-b2d62ceb95d2dd9b3fbe157bb70d26001e9.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-d67451d308b7a79ad6819723396f7c3d77a.png"/></td>
-    </tr>	 
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/5e8c387724954459291aafd5eb52b456f53.jpg"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/644e78da53c2e92a95dfda4f76e6d117c4b.jpg"/></td>
-    </tr>
-	<tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-8370a0d02977eebf6dbf854c8450293c937.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-49003ed83f60f633e7153609a53a2b644f7.png"/></td>
-    </tr>
-	<tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-d4fe726319ece268d4746602c39cffc0621.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-c195234bbcd30be6927f037a6755e6ab69c.png"/></td>
-    </tr>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/b6115bc8c31de52951982e509930b20684a.jpg"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-5e4daac0bb59612c5038448acbcef235e3a.png"/></td>
-    </tr>
-</table>
+| 配置项 | 默认值 |
+| --- | --- |
+| MySQL 地址 | `localhost:3306` |
+| MySQL 数据库 | `SpinTale` |
+| MySQL 用户 | `root` |
+| MySQL 密码 | `365061` |
+| Redis 地址 | `localhost:6379` |
+| Redis 数据库 | `0` |
+| Redis 密码 | `365061` |
+| 文件上传目录 | `D:/SpinTale/uploadPath` |
+| 默认日志目录 | `D:/SpinTale/logs`，可通过 `LOG_PATH` 覆盖 |
 
+初始化数据库：
 
-## 若依前后端分离交流群
+```powershell
+mysql -uroot -p365061 -e "CREATE DATABASE IF NOT EXISTS SpinTale DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+mysql -uroot -p365061 SpinTale < sql\spintale_20260417.sql
+mysql -uroot -p365061 SpinTale < sql\quartz.sql
+```
 
-QQ群： [![加入QQ群](https://img.shields.io/badge/已满-937441-blue.svg)](https://jq.qq.com/?_wv=1027&k=5bVB1og) [![加入QQ群](https://img.shields.io/badge/已满-887144332-blue.svg)](https://jq.qq.com/?_wv=1027&k=5eiA4DH) [![加入QQ群](https://img.shields.io/badge/已满-180251782-blue.svg)](https://jq.qq.com/?_wv=1027&k=5AxMKlC) [![加入QQ群](https://img.shields.io/badge/已满-104180207-blue.svg)](https://jq.qq.com/?_wv=1027&k=51G72yr) [![加入QQ群](https://img.shields.io/badge/已满-186866453-blue.svg)](https://jq.qq.com/?_wv=1027&k=VvjN2nvu) [![加入QQ群](https://img.shields.io/badge/已满-201396349-blue.svg)](https://jq.qq.com/?_wv=1027&k=5vYAqA05) [![加入QQ群](https://img.shields.io/badge/已满-101456076-blue.svg)](https://jq.qq.com/?_wv=1027&k=kOIINEb5) [![加入QQ群](https://img.shields.io/badge/已满-101539465-blue.svg)](https://jq.qq.com/?_wv=1027&k=UKtX5jhs) [![加入QQ群](https://img.shields.io/badge/已满-264312783-blue.svg)](https://jq.qq.com/?_wv=1027&k=EI9an8lJ) [![加入QQ群](https://img.shields.io/badge/已满-167385320-blue.svg)](https://jq.qq.com/?_wv=1027&k=SWCtLnMz) [![加入QQ群](https://img.shields.io/badge/已满-104748341-blue.svg)](https://jq.qq.com/?_wv=1027&k=96Dkdq0k) [![加入QQ群](https://img.shields.io/badge/已满-160110482-blue.svg)](https://jq.qq.com/?_wv=1027&k=0fsNiYZt) [![加入QQ群](https://img.shields.io/badge/已满-170801498-blue.svg)](https://jq.qq.com/?_wv=1027&k=7xw4xUG1) [![加入QQ群](https://img.shields.io/badge/已满-108482800-blue.svg)](https://jq.qq.com/?_wv=1027&k=eCx8eyoJ) [![加入QQ群](https://img.shields.io/badge/已满-101046199-blue.svg)](https://jq.qq.com/?_wv=1027&k=SpyH2875) [![加入QQ群](https://img.shields.io/badge/已满-136919097-blue.svg)](https://jq.qq.com/?_wv=1027&k=tKEt51dz) [![加入QQ群](https://img.shields.io/badge/已满-143961921-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=0vBbSb0ztbBgVtn3kJS-Q4HUNYwip89G&authKey=8irq5PhutrZmWIvsUsklBxhj57l%2F1nOZqjzigkXZVoZE451GG4JHPOqW7AW6cf0T&noverify=0&group_code=143961921) [![加入QQ群](https://img.shields.io/badge/已满-174951577-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=ZFAPAbp09S2ltvwrJzp7wGlbopsc0rwi&authKey=HB2cxpxP2yspk%2Bo3WKTBfktRCccVkU26cgi5B16u0KcAYrVu7sBaE7XSEqmMdFQp&noverify=0&group_code=174951577) [![加入QQ群](https://img.shields.io/badge/已满-161281055-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Fn2aF5IHpwsy8j6VlalNJK6qbwFLFHat&authKey=uyIT%2B97x2AXj3odyXpsSpVaPMC%2Bidw0LxG5MAtEqlrcBcWJUA%2FeS43rsF1Tg7IRJ&noverify=0&group_code=161281055) [![加入QQ群](https://img.shields.io/badge/已满-138988063-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=XIzkm_mV2xTsUtFxo63bmicYoDBA6Ifm&authKey=dDW%2F4qsmw3x9govoZY9w%2FoWAoC4wbHqGal%2BbqLzoS6VBarU8EBptIgPKN%2FviyC8j&noverify=0&group_code=138988063) [![加入QQ群](https://img.shields.io/badge/已满-151450850-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=DkugnCg68PevlycJSKSwjhFqfIgrWWwR&authKey=pR1Pa5lPIeGF%2FFtIk6d%2FGB5qFi0EdvyErtpQXULzo03zbhopBHLWcuqdpwY241R%2F&noverify=0&group_code=151450850) [![加入QQ群](https://img.shields.io/badge/已满-224622315-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=F58bgRa-Dp-rsQJThiJqIYv8t4-lWfXh&authKey=UmUs4CVG5OPA1whvsa4uSespOvyd8%2FAr9olEGaWAfdLmfKQk%2FVBp2YU3u2xXXt76&noverify=0&group_code=224622315) [![加入QQ群](https://img.shields.io/badge/已满-287842588-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Nxb2EQ5qozWa218Wbs7zgBnjLSNk_tVT&authKey=obBKXj6SBKgrFTJZx0AqQnIYbNOvBB2kmgwWvGhzxR67RoRr84%2Bus5OadzMcdJl5&noverify=0&group_code=287842588) [![加入QQ群](https://img.shields.io/badge/已满-187944233-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=numtK1M_I4eVd2Gvg8qtbuL8JgX42qNh&authKey=giV9XWMaFZTY%2FqPlmWbkB9g3fi0Ev5CwEtT9Tgei0oUlFFCQLDp4ozWRiVIzubIm&noverify=0&group_code=187944233) [![加入QQ群](https://img.shields.io/badge/已满-228578329-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=G6r5KGCaa3pqdbUSXNIgYloyb8e0_L0D&authKey=4w8tF1eGW7%2FedWn%2FHAypQksdrML%2BDHolQSx7094Agm7Luakj9EbfPnSTxSi2T1LQ&noverify=0&group_code=228578329) [![加入QQ群](https://img.shields.io/badge/已满-191164766-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=GsOo-OLz53J8y_9TPoO6XXSGNRTgbFxA&authKey=R7Uy%2Feq%2BZsoKNqHvRKhiXpypW7DAogoWapOawUGHokJSBIBIre2%2FoiAZeZBSLuBc&noverify=0&group_code=191164766) [![加入QQ群](https://img.shields.io/badge/已满-174569686-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=PmYavuzsOthVqfdAPbo4uAeIbu7Ttjgc&authKey=p52l8%2FXa4PS1JcEmS3VccKSwOPJUZ1ZfQ69MEKzbrooNUljRtlKjvsXf04bxNp3G&noverify=0&group_code=174569686) [![加入QQ群](https://img.shields.io/badge/127358632-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=M9y5NjAl44lAL_Vh2crmEehZU_PMU6KS&authKey=ZSDz8hEREWSaPuxQV3gEwqGIaGjfRNnkB4rJjf0IvXhrSUGSGwQFmBA%2Boe8HFxyl&noverify=0&group_code=127358632) 点击按钮入群。
+Windows 上 MySQL 如果启用了 `lower_case_table_names=1`，数据库目录可能显示为小写，但 JDBC URL 仍使用 `SpinTale`。
+
+## 启动后端
+
+先确认 MySQL 和 Redis 已启动，再执行：
+
+```powershell
+mvn -q -DskipTests compile
+mvn -pl spintale-admin -am spring-boot:run
+```
+
+也可以先打包再运行：
+
+```powershell
+mvn -q -DskipTests package
+java -jar spintale-admin\target\spintale-admin.jar
+```
+
+启动成功后访问：
+
+| 地址 | 用途 |
+| --- | --- |
+| `http://localhost:8080/` | 后端首页探测 |
+| `http://localhost:8080/swagger-ui.html` | Swagger UI |
+| `http://localhost:8080/v3/api-docs` | OpenAPI JSON |
+| `http://localhost:8080/druid/` | Druid 监控页 |
+
+Druid 默认登录：
+
+```text
+用户名: spintale
+密码: 365061
+```
+
+初始化账号通常为：
+
+```text
+用户名: admin
+密码: admin123
+```
+
+## IntelliJ IDEA 导入
+
+1. 使用 IDEA 打开 `D:\GitCode\SpinTale1.0\SpinTale`。
+2. Project SDK 选择 `D:\JDK` 或 IDEA 自带 JBR 17。
+3. Maven Home 选择 `D:\Maven`，或使用 IDEA Bundled Maven。
+4. 刷新 Maven 项目，确认根 `pom.xml` 下的 6 个模块全部导入。
+5. 运行配置选择 `com.spintale.SpinTaleApplication`，Working directory 使用项目根目录。
+
+如果 IDEA 出现 `无法解析符号 'springframework'`，优先执行：
+
+```powershell
+mvn -U -q -DskipTests install
+```
+
+然后在 IDEA 中执行 Maven Reload，必要时再执行 `File > Invalidate Caches`。
+
+## 与前端联调
+
+前端不在本仓库维护，路径为：
+
+```text
+D:\GitCode\SpinTale1.0\SpinTale-Vue
+```
+
+联调时保持后端运行在 `http://localhost:8080`，前端代理应指向该地址。跨域、接口前缀和登录 Token 逻辑应以前端项目配置为准。
+
+## 常用命令
+
+```powershell
+# 编译全部模块
+mvn -q -DskipTests compile
+
+# 安装本地 Maven 依赖，适合 IDEA 解析异常时使用
+mvn -U -q -DskipTests install
+
+# 打包后端
+mvn -q -DskipTests package
+
+# 只运行启动模块
+mvn -pl spintale-admin -am spring-boot:run
+
+# 查看 Git 状态
+git status --short --branch
+```
+
+## 主要功能
+
+当前后端保留并维护以下基础能力：
+
+- 用户、角色、菜单、部门、岗位管理
+- 字典、参数、通知公告管理
+- 登录日志、操作日志、在线用户监控
+- 服务监控、缓存监控、Druid 数据源监控
+- Quartz 定时任务和任务日志
+- 代码生成器
+- JWT 登录认证和 Spring Security 权限控制
+- Redis 缓存和验证码能力
+- Springdoc OpenAPI 接口文档
+
+## 配置维护约定
+
+- 项目名、包名、模块名统一使用 `SpinTale` / `spintale` / `com.spintale`。
+- 后端配置前缀统一使用 `spintale`。
+- 本仓库只处理后端；前端变更应进入 `SpinTale-Vue` 仓库。
+- 开发环境可以使用 README 中的默认密码，生产环境必须通过外部配置覆盖数据库、Redis、JWT 和 Druid 密码。
+- 修改模块、端口、数据库、缓存、启动方式或部署方式后，需要同步更新 README。
+
+## 已知待清理项
+
+初始化 SQL 中仍有少量上游示例数据文案，例如部门、公告、测试用户昵称等。它们不影响后端启动，但后续做业务定制时应逐步替换为 SpinTale 自有数据。
+
+## 维护计划
+
+README 应随项目变化持续更新，重点关注：
+
+- Maven 版本、模块增删、包名调整
+- 数据库脚本和默认配置变化
+- 启动、构建、部署方式变化
+- 前后端联调地址和代理变化
+- 新增业务模块和重要接口说明
