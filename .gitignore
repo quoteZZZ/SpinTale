@@ -1,47 +1,33 @@
-######################################################################
-# Build Tools
-
-.gradle
-/build/
-!gradle/wrapper/gradle-wrapper.jar
-
+```
+# Compiled and build artifacts
+*.class
+*.o
+*.obj
+*.out
 target/
-!.mvn/wrapper/maven-wrapper.jar
 
-######################################################################
-# IDE
+# Dependencies
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### JRebel ###
-rebel.xml
-
-### NetBeans ###
-nbproject/private/
-build/*
-nbbuild/
-dist/
-nbdist/
-.nb-gradle/
-
-######################################################################
-# Others
+# Logs and temp files
 *.log
-*.xml.versionsBackup
+*.tmp
 *.swp
 
-!*/build/*.java
-!*/build/*.html
-!*/build/*.xml
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
+```
