@@ -30,6 +30,7 @@
         <jwt.version>0.9.1</jwt.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <springdoc.version>3.0.2</springdoc.version>
+        <langchain4j.version>1.13.1</langchain4j.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -41,6 +42,14 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-bom</artifactId>
+                <version>${langchain4j.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -90,6 +99,18 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai</artifactId>
+                <version>${langchain4j.version}</version>
             </dependency>
 
             <!-- io常用工具类 -->
@@ -155,6 +176,13 @@
                 <version>${spintale.version}</version>
             </dependency>
 
+            <!-- AI 模块-->
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
             <!-- 系统模块-->
             <dependency>
                 <groupId>com.spintale</groupId>
@@ -175,6 +203,7 @@
     <modules>
         <module>spintale-admin</module>
         <module>spintale-framework</module>
+        <module>spintale-ai</module>
         <module>spintale-system</module>
         <module>spintale-quartz</module>
         <module>spintale-generator</module>

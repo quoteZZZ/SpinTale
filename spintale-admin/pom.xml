@@ -48,6 +48,12 @@
             <artifactId>spintale-framework</artifactId>
         </dependency>
 
+        <!-- AI 模块-->
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-ai</artifactId>
+        </dependency>
+
         <!-- 定时任务-->
         <dependency>
             <groupId>com.spintale</groupId>

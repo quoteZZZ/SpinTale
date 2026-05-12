@@ -1,27 +1,20 @@
 package com.spintale.ai.core;
 
-import lombok.Builder;
-import lombok.Data;
+import java.util.Map;
 
-/**
- * 工具调用
- */
-@Data
-@Builder
-public class ToolCall {
-    
-    /**
-     * 工具调用 ID
-     */
+public class ToolCall
+{
     private String id;
-    
-    /**
-     * 工具名称
-     */
     private String name;
-    
-    /**
-     * 工具参数 (JSON 字符串)
-     */
-    private String arguments;
+    private Map<String, Object> arguments;
+    private String result;
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public Map<String, Object> getArguments() { return arguments; }
+    public void setArguments(Map<String, Object> arguments) { this.arguments = arguments; }
+    public String getResult() { return result; }
+    public void setResult(String result) { this.result = result; }
 }

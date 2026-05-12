@@ -2,6 +2,7 @@ package com.spintale.ai.generation.model;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import com.spintale.ai.core.TokenUsage;
 
 /**
  * AI 内容生成响应

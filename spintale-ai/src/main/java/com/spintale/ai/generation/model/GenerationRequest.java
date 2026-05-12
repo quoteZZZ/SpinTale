@@ -50,6 +50,10 @@ public class GenerationRequest implements Serializable {
      */
     private String language;
 
+    private String apiKey;
+
+    private String modelName;
+
     /**
      * 额外参数
      */
@@ -130,6 +134,22 @@ public class GenerationRequest implements Serializable {
         this.language = language;
     }
 
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
+
+    public String getModelName() {
+        return modelName;
+    }
+
+    public void setModelName(String modelName) {
+        this.modelName = modelName;
+    }
+
     public Map<String, Object> getExtraParams() {
         return extraParams;
     }
@@ -201,6 +221,16 @@ public class GenerationRequest implements Serializable {
 
         public Builder language(String language) {
             request.setLanguage(language);
+            return this;
+        }
+
+        public Builder apiKey(String apiKey) {
+            request.setApiKey(apiKey);
+            return this;
+        }
+
+        public Builder modelName(String modelName) {
+            request.setModelName(modelName);
             return this;
         }
 

@@ -9,9 +9,29 @@ spintale:
   # 文件路径 示例（ Windows配置D:/SpinTale/uploadPath，Linux配置 /home/spintale/uploadPath）
   profile: D:/SpinTale/uploadPath
   # 获取ip地址开关
-  addressEnabled: false
-  # 验证码类型 math 数字计算 char 字符验证
+  addressEnabled: true
+  # 验证码类型 math 数组计算 char 字符验证
   captchaType: math
+  # 验证码开关
+  captchaEnabled: false
+  # 天气获取开关
+  weatherEnabled: true
+  # 解析事件开关
+  eventEnabled: false
+  ai:
+    # Users must provide an API key in request, or set DEEPSEEK_API_KEY on server.
+    enabled: ${SPINTALE_AI_ENABLED:true}
+    mockWhenDisabled: false
+    provider: deepseek
+    openai-compatible:
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: https://api.deepseek.com
+      model-name: deepseek-v4-flash
+      temperature: 0.7
+      max-tokens: 2000
+      timeout: 60s
+      allow-base-url-override: false
+      allow-model-override: true
 
 # 开发环境配置
 server:

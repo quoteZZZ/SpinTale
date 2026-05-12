@@ -1,29 +1,17 @@
 package com.spintale.ai.core;
 
-import lombok.Builder;
-import lombok.Data;
-
 import java.util.Map;
 
-/**
- * 工具定义
- */
-@Data
-@Builder
-public class ToolDefinition {
-    
-    /**
-     * 工具名称
-     */
+public class ToolDefinition
+{
     private String name;
-    
-    /**
-     * 工具描述
-     */
     private String description;
-    
-    /**
-     * 参数 schema (JSON Schema)
-     */
     private Map<String, Object> parameters;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public Map<String, Object> getParameters() { return parameters; }
+    public void setParameters(Map<String, Object> parameters) { this.parameters = parameters; }
 }

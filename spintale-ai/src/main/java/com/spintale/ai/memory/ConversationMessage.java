@@ -1,35 +1,20 @@
 package com.spintale.ai.memory;
 
-import lombok.Builder;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 
-/**
- * 对话消息
- */
-@Data
-@Builder
-public class ConversationMessage {
-    
-    /**
-     * 角色：system, user, assistant
-     */
+public class ConversationMessage
+{
     private String role;
-    
-    /**
-     * 消息内容
-     */
     private String content;
-    
-    /**
-     * 时间戳
-     */
-    @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();
-    
-    /**
-     * Token 数
-     */
     private Integer tokenCount;
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+    public LocalDateTime getTimestamp() { return timestamp; }
+    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public Integer getTokenCount() { return tokenCount; }
+    public void setTokenCount(Integer tokenCount) { this.tokenCount = tokenCount; }
 }

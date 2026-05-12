@@ -1,32 +1,30 @@
 package com.spintale.ai.core;
 
-import lombok.Builder;
-import lombok.Data;
-
-/**
- * 聊天消息
- */
-@Data
-@Builder
-public class ChatMessage {
-    
-    /**
-     * 角色：system, user, assistant, tool
-     */
+public class ChatMessage
+{
     private String role;
-    
-    /**
-     * 消息内容
-     */
     private String content;
-    
-    /**
-     * 工具调用 ID (当 role 为 tool 时)
-     */
     private String toolCallId;
-    
-    /**
-     * 工具名称 (当 role 为 tool 时)
-     */
     private String toolName;
+
+    public static ChatMessage system(String content) { return of("system", content); }
+    public static ChatMessage user(String content) { return of("user", content); }
+    public static ChatMessage assistant(String content) { return of("assistant", content); }
+
+    public static ChatMessage of(String role, String content)
+    {
+        ChatMessage message = new ChatMessage();
+        message.setRole(role);
+        message.setContent(content);
+        return message;
+    }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+    public String getToolCallId() { return toolCallId; }
+    public void setToolCallId(String toolCallId) { this.toolCallId = toolCallId; }
+    public String getToolName() { return toolName; }
+    public void setToolName(String toolName) { this.toolName = toolName; }
 }
