@@ -52,6 +52,52 @@ public class AiProperties {
      */
     private RagConfig rag = new RagConfig();
     
+    /**
+     * 上下文管理配置
+     */
+    private ContextConfig context = new ContextConfig();
+    
+    /**
+     * 幻觉检测配置
+     */
+    private HallucinationDetectionConfig hallucinationDetection = new HallucinationDetectionConfig();
+    
+    @Data
+    public static class ContextConfig {
+        /**
+         * 最大上下文消息数
+         */
+        private Integer maxMessages = 20;
+        
+        /**
+         * 记忆检索相似度阈值
+         */
+        private Double memoryRetrievalThreshold = 0.6;
+        
+        /**
+         * 是否启用长期记忆
+         */
+        private Boolean longTermMemoryEnabled = true;
+    }
+    
+    @Data
+    public static class HallucinationDetectionConfig {
+        /**
+         * 是否启用幻觉检测
+         */
+        private Boolean enabled = true;
+        
+        /**
+         * 幻觉判定阈值（低于此值认为是幻觉）
+         */
+        private Double threshold = 0.5;
+        
+        /**
+         * 检测到幻觉时的处理方式：WARN(警告), REGENERATE(重新生成), BLOCK(阻止)
+         */
+        private String action = "WARN";
+    }
+    
     @Data
     public static class OpenAiConfig {
         /**

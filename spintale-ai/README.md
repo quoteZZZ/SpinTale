@@ -2,6 +2,16 @@
 
 基于 LangChain4j 构建的企业级 AI 智能模块，集成多种大语言模型和 AI 能力。
 
+## 最新版本：v2.1
+
+### 🆕 核心修复 (v2.1)
+- **ReAct Agent**: 实现完整的 Reasoning + Acting 循环，支持真实工具调用
+- **执行步骤追踪**: 详细记录每次工具调用的参数和结果
+- **Token 统计**: 完整的 Token 使用量追踪
+- **错误处理**: 增强的异常处理和超时控制
+
+---
+
 ## 核心特性
 
 ### 1. 多模型支持
@@ -37,7 +47,27 @@
 - **视频脚本**: 短视频、宣传片脚本
 - **流式输出**: 支持 SSE 实时流式生成
 
-### 6. 可观测性
+### 6. 长期记忆管理 🆕
+- **跨会话记忆**: 记住用户的重要信息和偏好
+- **语义检索**: 基于向量相似度检索相关记忆
+- **重要性评分**: 自动评估记忆的重要性
+- **记忆压缩**: 将多个相关记忆合并为摘要
+- **过期清理**: 自动清理过期或低价值记忆
+
+### 7. 幻觉检测与缓解 🆕
+- **事实一致性检查**: 检测 AI 回复是否与已知事实矛盾
+- **置信度评估**: 实时评估 AI 回复的可信度
+- **可疑模式识别**: 识别模糊引用、编造数据等模式
+- **内部矛盾检测**: 发现自相矛盾的表述
+- **警告提示**: 对低置信度回复添加警示标记
+
+### 8. 增强型聊天服务 🆕
+- **上下文优化**: 智能选择最相关的对话历史
+- **记忆注入**: 将长期记忆动态注入系统提示
+- **RAG 集成**: 结合检索内容进行生成
+- **流式处理**: 支持实时流式响应
+
+### 9. 可观测性
 - Token 使用统计
 - 请求/响应日志
 - 性能监控
@@ -85,6 +115,18 @@ spintale:
       milvus:
         uri: http://localhost:19530
         collectionName: spintale_knowledge
+    
+    # 上下文与记忆配置
+    context:
+      maxMessages: 20
+      memoryRetrievalThreshold: 0.6
+      longTermMemoryEnabled: true
+    
+    # 幻觉检测配置
+    hallucinationDetection:
+      enabled: true
+      threshold: 0.5
+      action: WARN  # WARN, REGENERATE, BLOCK
 ```
 
 ### 3. 使用示例
@@ -192,20 +234,28 @@ spintale-ai/
 │   ├── AiChatService   # 聊天服务接口
 │   ├── ChatRequest     # 聊天请求
 │   ├── ChatResponse    # 聊天响应
-│   └── ...
+│   └── EnhancedAiChatService  # 增强型聊天服务 🆕
 ├── client/             # 客户端实现
 │   └── LangChainAiChatService  # LangChain4j 实现
 ├── config/             # 自动配置
 │   ├── AiProperties    # 配置属性
 │   ├── AiOpenAiAutoConfig
 │   ├── AiOllamaAutoConfig
-│   └── AiGenerationAutoConfig  # 内容生成配置 🆕
+│   ├── AiGenerationAutoConfig  # 内容生成配置 🆕
+│   └── AiEnhancedAutoConfig    # 增强功能配置 🆕
 ├── tool/               # 工具系统
 │   ├── AiTool          # 工具接口
 │   └── WeatherTool     # 示例工具
-├── memory/             # 对话记忆
-│   ├── ConversationManager
-│   └── ConversationSession
+├── memory/             # 对话记忆 🆕
+│   ├── ConversationManager       # 会话管理器
+│   ├── ConversationSession       # 会话实体
+│   ├── ConversationMessage       # 消息实体
+│   ├── InMemoryConversationManager
+│   ├── LongTermMemory            # 长期记忆实体 🆕
+│   ├── LongTermMemoryManager     # 长期记忆接口 🆕
+│   └── InMemoryLongTermMemoryManager  # 长期记忆实现 🆕
+├── hallucination/      # 幻觉检测 🆕
+│   └── HallucinationDetectionService  # 幻觉检测服务
 ├── retrieval/          # RAG 检索
 │   ├── RetrievalService
 │   └── EmbeddingRetrievalService
