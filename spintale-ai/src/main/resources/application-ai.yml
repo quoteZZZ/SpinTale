@@ -1,0 +1,53 @@
+# SpinTale AI Module Configuration
+# 此配置文件用于启用和配置 AI 相关功能
+
+spintale:
+  ai:
+    # 是否启用 AI 功能
+    enabled: true
+    
+    # 默认模型提供商：openai, ollama, anthropic
+    provider: openai
+    model: gpt-4o-mini
+    
+    # OpenAI 配置
+    openai:
+      api-key: ${OPENAI_API_KEY:your-api-key-here}
+      base-url: https://api.openai.com/v1
+      timeout: 60000
+    
+    # Ollama 配置 (本地部署时使用)
+    ollama:
+      base-url: http://localhost:11434
+      model: llama3.1
+    
+    # RAG 检索增强生成配置
+    rag:
+      enabled: true
+      vector-store: milvus
+      embedding-model: bge-small-en-v1.5
+      
+      # Milvus 向量数据库配置
+      milvus:
+        uri: http://localhost:19530
+        username: root
+        password: Milvus
+        collection-name: spintale_knowledge
+    
+    # 上下文管理配置
+    context:
+      max-messages: 20
+      memory-retrieval-threshold: 0.6
+      long-term-memory-enabled: true
+    
+    # 幻觉检测配置
+    hallucination-detection:
+      enabled: true
+      threshold: 0.5
+      action: WARN  # WARN, REGENERATE, BLOCK
+    
+    # Temporal 工作流引擎配置
+    workflow:
+      enabled: true
+      target-server: http://localhost:7233
+      task-queue: ai-agent-queue

@@ -25,12 +25,20 @@
         <fastjson.version>2.0.61</fastjson.version>
         <oshi.version>6.10.0</oshi.version>
         <commons.io.version>2.21.0</commons.io.version>
-        <poi.version>4.1.2</poi.version>
+        <poi.version>5.4.0</poi.version>
         <velocity.version>2.3</velocity.version>
         <jwt.version>0.9.1</jwt.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <springdoc.version>3.0.2</springdoc.version>
         <langchain4j.version>1.13.1</langchain4j.version>
+        <!-- Vector Database -->
+        <milvus-sdk.version>2.5.8</milvus-sdk.version>
+        <pgvector-jdbc.version>1.0.13</pgvector-jdbc.version>
+        <!-- Document Parser -->
+        <pdfbox.version>3.0.4</pdfbox.version>
+        <commons-text.version>1.13.0</commons-text.version>
+        <!-- Redis -->
+        <redisson.version>3.42.0</redisson.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -153,6 +161,68 @@
                 <groupId>pro.fessional</groupId>
                 <artifactId>kaptcha</artifactId>
                 <version>${kaptcha.version}</version>
+            </dependency>
+            <!-- Vector Database: Milvus -->
+            <dependency>
+                <groupId>io.milvus</groupId>
+                <artifactId>milvus-sdk-java</artifactId>
+                <version>${milvus-sdk.version}</version>
+            </dependency>
+
+            <!-- Vector Database: PostgreSQL with pgvector -->
+            <dependency>
+                <groupId>com.github.pgvector</groupId>
+                <artifactId>pgvector</artifactId>
+                <version>${pgvector-jdbc.version}</version>
+            </dependency>
+
+            <!-- Document Parser: Apache PDFBox -->
+            <dependency>
+                <groupId>org.apache.pdfbox</groupId>
+                <artifactId>pdfbox</artifactId>
+                <version>${pdfbox.version}</version>
+            </dependency>
+
+            <!-- Document Parser: Apache Commons Text -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-text</artifactId>
+                <version>${commons-text.version}</version>
+            </dependency>
+
+            <!-- Redis Client: Redisson -->
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+
+            <!-- LangChain4j Embedding Models -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+
+            <!-- LangChain4j Embedding Store: Milvus -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-milvus</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+
+            <!-- LangChain4j Embedding Store: PostgreSQL/pgvector -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-pgvector</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+
+            <!-- LangChain4j Easy RAG -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-easy-rag</artifactId>
+                <version>${langchain4j.version}</version>
             </dependency>
 
             <!-- 定时任务-->
