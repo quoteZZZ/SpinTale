@@ -89,9 +89,12 @@ public class WeatherTool implements AiTool {
                 int start = args.indexOf("\"city\"");
                 if (start >= 0) {
                     int colonPos = args.indexOf(":", start);
+                    if (colonPos < 0) {
+                        return args.trim();
+                    }
                     int quoteStart = args.indexOf("\"", colonPos) + 1;
                     int quoteEnd = args.indexOf("\"", quoteStart);
-                    if (quoteStart > 0 && quoteEnd > quoteStart) {
+                    if (quoteStart > 0 && quoteEnd > quoteStart && quoteEnd <= args.length()) {
                         return args.substring(quoteStart, quoteEnd);
                     }
                 }

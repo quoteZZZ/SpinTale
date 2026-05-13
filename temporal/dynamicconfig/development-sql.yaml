@@ -1,0 +1,4 @@
+limit.maxIDSize: 2000
+frontend.enableUpdateWorkflowExecution: true
+frontend.enableUpdateWorkflowExecutionAsyncAccepted: true
+history.enablePersistTxnBasedEvents: true

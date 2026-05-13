@@ -41,9 +41,30 @@ SpinTale
 ├─ spintale-system     # 用户、角色、菜单、部门、岗位、字典、参数、公告
 ├─ spintale-quartz     # 定时任务和任务日志
 ├─ spintale-generator  # 代码生成器
+├─ spintale-ai         # AI 模块（LangChain4j、RAG、Agent、Temporal 工作流）
 ├─ sql                 # 初始化 SQL
 ├─ bin                 # Windows 脚本
 └─ doc                 # 项目文档资料
+```
+
+### AI 模块结构 (spintale-ai)
+
+```text
+spintale-ai
+├─ agent           # ReAct Agent 实现
+├─ client          # AI 模型客户端（OpenAI、Azure、Ollama）
+├─ config          # AI 相关配置
+├─ core            # 核心工具和常量
+├─ generation      # 内容生成（模板、服务）
+├─ hallucination   # 幻觉检测与缓解
+├─ mcp             # MCP 协议支持
+├─ memory          # 长期记忆系统（Redis 持久化）
+├─ prompt          # Prompt 模板引擎
+├─ retrieval       # RAG 检索（Milvus、文档解析）
+├─ skill           # 技能管理系统
+├─ tool            # 工具实现（Weather、HTTP、File）
+├─ web             # Web 控制器和 SSE 流式输出
+└─ workflow        # Temporal 工作流编排（新增）
 ```
 
 ## 本地环境
@@ -179,6 +200,8 @@ git status --short --branch
 
 ## 主要功能
 
+### 基础业务功能
+
 当前后端保留并维护以下基础能力：
 
 - 用户、角色、菜单、部门、岗位管理
@@ -190,6 +213,34 @@ git status --short --branch
 - JWT 登录认证和 Spring Security 权限控制
 - Redis 缓存和验证码能力
 - Springdoc OpenAPI 接口文档
+
+### AI 核心功能 (spintale-ai)
+
+**智能对话系统**
+- 长期记忆：跨会话记住用户偏好、重要事实（Redis 持久化）
+- 幻觉检测：实时检测并缓解 AI 幻觉，置信度评分
+- 上下文管理：智能选择相关上下文，优化 token 使用
+
+**RAG 检索增强生成**
+- 多格式解析：PDF、Markdown、Word 文档解析
+- 向量检索：基于 Milvus 的向量相似度搜索
+- Embedding：支持多种 Embedding 模型 (all-MiniLM-L6-v2)
+
+**Agent 系统**
+- ReAct Agent：完整的 Reasoning + Acting 循环
+- Temporal 编排：基于 Temporal 的工作流引擎，支持长流程、自动重试
+- 工具调用：支持 Weather、HTTP API、文件系统等工具
+- 技能管理：可扩展的技能注册与执行框架
+
+**MCP 协议支持**
+- 资源管理：标准化资源访问接口
+- 工具集成：Model Context Protocol 工具支持
+- 提示词模板：可复用的 Prompt 模板系统
+
+**内容生成**
+- 多模板支持：文章、广告文案、小说等模板
+- 流式输出：支持 SSE 流式响应
+- 多模型适配：OpenAI、Azure、Ollama、Anthropic
 
 ## 配置维护约定
 

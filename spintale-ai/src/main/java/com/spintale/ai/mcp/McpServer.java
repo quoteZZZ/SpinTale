@@ -167,7 +167,7 @@ public class McpServer {
 /**
  * MCP 提示词模板接口
  */
-interface McpPrompt {
+public interface McpPrompt {
     String getId();
     String getName();
     String getDescription();
