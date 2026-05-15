@@ -30,22 +30,10 @@
             <artifactId>langchain4j-open-ai</artifactId>
         </dependency>
 
-        <!-- LangChain4j Embedding Support -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-embeddings</artifactId>
-        </dependency>
-
-        <!-- Vector Database: Milvus -->
+        <!-- Vector Database: Milvus SDK (稳定版，配合自研 MilvusEmbeddingStoreAdapter) -->
         <dependency>
             <groupId>io.milvus</groupId>
             <artifactId>milvus-sdk-java</artifactId>
-        </dependency>
-
-        <!-- LangChain4j Milvus Integration -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-milvus</artifactId>
         </dependency>
 
         <!-- Document Parser: Apache PDFBox -->
@@ -70,56 +58,47 @@
             <artifactId>spintale-common</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.spintale</groupId>
-            <artifactId>spintale-framework</artifactId>
-        </dependency>
-
         <!-- Redis for Memory Caching -->
         <dependency>
             <groupId>org.redisson</groupId>
             <artifactId>redisson-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- Local Cache: Caffeine -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- Workflow Engine: Temporal -->
         <dependency>
             <groupId>io.temporal</groupId>
             <artifactId>temporal-sdk</artifactId>
-            <version>1.22.1</version>
         </dependency>
 
         <!-- Temporal Spring Boot Starter -->
         <dependency>
             <groupId>io.temporal</groupId>
             <artifactId>temporal-spring-boot-starter</artifactId>
-            <version>1.22.1</version>
-        </dependency>
-
-        <!-- Additional Embedding Models -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-            <version>0.35.0</version>
-        </dependency>
-
-        <!-- Text Splitter for RAG -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-document-transformer</artifactId>
-            <version>0.35.0</version>
         </dependency>
 
         <!-- Retry and Resilience -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>2.2.0</version>
         </dependency>
 
         <!-- Metrics and Monitoring -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>

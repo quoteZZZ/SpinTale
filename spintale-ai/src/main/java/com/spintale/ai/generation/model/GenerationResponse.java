@@ -1,12 +1,22 @@
 package com.spintale.ai.generation.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import com.spintale.ai.core.TokenUsage;
+import java.util.List;
+import com.spintale.ai.core.model.TokenUsage;
 
 /**
  * AI 内容生成响应
  */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class GenerationResponse implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -33,12 +43,14 @@ public class GenerationResponse implements Serializable {
     /**
      * 生成时间
      */
-    private LocalDateTime generatedAt;
+    @Builder.Default
+    private LocalDateTime generatedAt = LocalDateTime.now();
 
     /**
      * 是否完成
      */
-    private boolean completed;
+    @Builder.Default
+    private boolean completed = true;
 
     /**
      * 错误信息
@@ -50,95 +62,71 @@ public class GenerationResponse implements Serializable {
      */
     private Object metadata;
 
-    public GenerationResponse() {
-        this.generatedAt = LocalDateTime.now();
-        this.completed = true;
-    }
+    /**
+     * 完成原因
+     */
+    private String finishReason;
 
-    public GenerationResponse(String content, ContentType contentType) {
-        this();
-        this.content = content;
-        this.contentType = contentType;
-    }
+    /**
+     * 推理轨迹
+     */
+    private String reasoningTrace;
 
-    public String getContent() {
-        return content;
-    }
+    /**
+     * 检索到的上下文
+     */
+    private List<String> retrievedContext;
 
-    public void setContent(String content) {
-        this.content = content;
-    }
+    /**
+     * 是否需要执行工具
+     */
+    @Builder.Default
+    private boolean requiresToolExecution = false;
 
-    public ContentType getContentType() {
-        return contentType;
-    }
+    /**
+     * 工具名称
+     */
+    private String toolName;
 
-    public void setContentType(ContentType contentType) {
-        this.contentType = contentType;
-    }
+    /**
+     * 工具参数
+     */
+    private Object toolArgs;
 
-    public String getModel() {
-        return model;
-    }
+    /**
+     * 幻觉检测分数 (0.0 - 1.0)
+     */
+    private Double hallucinationScore;
 
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public TokenUsage getTokenUsage() {
-        return tokenUsage;
-    }
-
-    public void setTokenUsage(TokenUsage tokenUsage) {
-        this.tokenUsage = tokenUsage;
-    }
-
-    public LocalDateTime getGeneratedAt() {
-        return generatedAt;
-    }
-
-    public void setGeneratedAt(LocalDateTime generatedAt) {
-        this.generatedAt = generatedAt;
-    }
-
-    public boolean isCompleted() {
-        return completed;
-    }
-
-    public void setCompleted(boolean completed) {
-        this.completed = completed;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
-    public Object getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(Object metadata) {
-        this.metadata = metadata;
-    }
+    /**
+     * 迭代次数
+     */
+    private Integer iterations;
 
     /**
      * 构建成功响应
      */
     public static GenerationResponse success(String content, ContentType contentType) {
-        return new GenerationResponse(content, contentType);
+        return GenerationResponse.builder()
+                .content(content)
+                .contentType(contentType)
+                .build();
     }
 
     /**
      * 构建错误响应
      */
     public static GenerationResponse error(String errorMessage) {
-        GenerationResponse response = new GenerationResponse();
-        response.setCompleted(false);
-        response.setErrorMessage(errorMessage);
-        return response;
+        return GenerationResponse.builder()
+                .completed(false)
+                .errorMessage(errorMessage)
+                .build();
+    }
+
+    /**
+     * 检查是否需要执行工具
+     */
+    public boolean requiresToolExecution() {
+        return requiresToolExecution;
     }
 }

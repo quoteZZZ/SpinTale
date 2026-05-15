@@ -44,7 +44,7 @@ public class SimplePromptTemplate implements PromptTemplate
     }
 
     @Override
-    public String renderFromResource(String resourcePath, Map<String, Object> variables)
+    public String renderFile(String resourcePath, Map<String, Object> variables)
     {
         return render(loadTemplate(resourcePath), variables);
     }

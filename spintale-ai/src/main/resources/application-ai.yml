@@ -16,6 +16,15 @@ spintale:
       base-url: https://api.openai.com/v1
       timeout: 60000
     
+    # OpenAI 兼容 API 配置（支持 DeepSeek、Qwen、Moonshot 等）
+    openai-compatible:
+      api-key: ${OPENAI_COMPATIBLE_API_KEY:${OPENAI_API_KEY:your-api-key-here}}
+      base-url: ${OPENAI_COMPATIBLE_BASE_URL:https://api.openai.com/v1}
+      model-name: ${OPENAI_COMPATIBLE_MODEL:gpt-4o-mini}
+      timeout: 60000
+      temperature: 0.7
+      max-tokens: 2048
+    
     # Ollama 配置 (本地部署时使用)
     ollama:
       base-url: http://localhost:11434
@@ -46,8 +55,26 @@ spintale:
       threshold: 0.5
       action: WARN  # WARN, REGENERATE, BLOCK
     
+    # 安全围栏配置
+    safety:
+      enabled: true
+      level: MODERATE  # STRICT, MODERATE, RELAXED
+    
+    # 语义缓存配置
+    semantic-cache:
+      enabled: true
+      similarity-threshold: 0.85
+      ttl-hours: 24
+    
     # Temporal 工作流引擎配置
     workflow:
       enabled: true
       target-server: http://localhost:7233
       task-queue: ai-agent-queue
+    
+    # AI工具配置
+    tools:
+      # 天气查询工具
+      weather:
+        api-key: ${WEATHER_API_KEY:demo}  # 从 https://openweathermap.org/api 获取
+        base-url: https://api.openweathermap.org/data/2.5

@@ -19,26 +19,31 @@
         <spring-boot.version>4.0.3</spring-boot.version>
         <mybatis-spring-boot.version>4.0.1</mybatis-spring-boot.version>
         <druid.version>1.2.28</druid.version>
-        <yauaa.version>8.1.0</yauaa.version>
+        <yauaa.version>7.24.0</yauaa.version>
         <kaptcha.version>2.3.3</kaptcha.version>
-        <pagehelper.boot.version>2.1.1</pagehelper.boot.version>
-        <fastjson.version>2.0.61</fastjson.version>
-        <oshi.version>6.10.0</oshi.version>
-        <commons.io.version>2.21.0</commons.io.version>
-        <poi.version>5.4.0</poi.version>
-        <velocity.version>2.3</velocity.version>
-        <jwt.version>0.9.1</jwt.version>
-        <jaxb-api.version>2.3.1</jaxb-api.version>
+        <pagehelper.boot.version>2.1.0</pagehelper.boot.version>
+        <fastjson.version>2.0.62</fastjson.version>
+        <oshi.version>6.8.1</oshi.version>
+        <commons.io.version>2.20.0</commons.io.version>
+        <caffeine.version>3.2.2</caffeine.version>
+        <poi.version>5.5.1</poi.version>
+        <velocity.version>2.4</velocity.version>
+        <jjwt.version>0.12.6</jjwt.version>
+        <jakarta.bind-api.version>4.0.2</jakarta.bind-api.version>
         <springdoc.version>3.0.2</springdoc.version>
         <langchain4j.version>1.13.1</langchain4j.version>
         <!-- Vector Database -->
         <milvus-sdk.version>2.5.8</milvus-sdk.version>
-        <pgvector-jdbc.version>1.0.13</pgvector-jdbc.version>
         <!-- Document Parser -->
-        <pdfbox.version>3.0.4</pdfbox.version>
-        <commons-text.version>1.13.0</commons-text.version>
+        <pdfbox.version>3.0.7</pdfbox.version>
         <!-- Redis -->
-        <redisson.version>3.42.0</redisson.version>
+        <redisson.version>3.52.0</redisson.version>
+        <!-- Workflow -->
+        <temporal.version>1.35.0</temporal.version>
+        <!-- Resilience -->
+        <resilience4j.version>2.2.0</resilience4j.version>
+        <!-- Lombok -->
+        <lombok.version>1.18.36</lombok.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -90,9 +95,9 @@
             </dependency>
 
             <dependency>
-                <groupId>javax.xml.bind</groupId>
-                <artifactId>jaxb-api</artifactId>
-                <version>${jaxb-api.version}</version>
+                <groupId>jakarta.xml.bind</groupId>
+                <artifactId>jakarta.xml.bind-api</artifactId>
+                <version>${jakarta.bind-api.version}</version>
             </dependency>
 
             <!-- 获取系统信息 -->
@@ -107,18 +112,6 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j</artifactId>
-                <version>${langchain4j.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-open-ai</artifactId>
-                <version>${langchain4j.version}</version>
             </dependency>
 
             <!-- io常用工具类 -->
@@ -149,11 +142,21 @@
                 <version>${fastjson.version}</version>
             </dependency>
 
-            <!-- Token生成与解析-->
+            <!-- Token生成与解析 (jjwt 0.12.x) -->
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt</artifactId>
-                <version>${jwt.version}</version>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
             </dependency>
 
             <!-- 验证码 -->
@@ -169,25 +172,11 @@
                 <version>${milvus-sdk.version}</version>
             </dependency>
 
-            <!-- Vector Database: PostgreSQL with pgvector -->
-            <dependency>
-                <groupId>com.github.pgvector</groupId>
-                <artifactId>pgvector</artifactId>
-                <version>${pgvector-jdbc.version}</version>
-            </dependency>
-
             <!-- Document Parser: Apache PDFBox -->
             <dependency>
                 <groupId>org.apache.pdfbox</groupId>
                 <artifactId>pdfbox</artifactId>
                 <version>${pdfbox.version}</version>
-            </dependency>
-
-            <!-- Document Parser: Apache Commons Text -->
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-text</artifactId>
-                <version>${commons-text.version}</version>
             </dependency>
 
             <!-- Redis Client: Redisson -->
@@ -197,32 +186,40 @@
                 <version>${redisson.version}</version>
             </dependency>
 
-            <!-- LangChain4j Embedding Models -->
+            <!-- Local Cache: Caffeine -->
             <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-embeddings</artifactId>
-                <version>${langchain4j.version}</version>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.version}</version>
             </dependency>
 
-            <!-- LangChain4j Embedding Store: Milvus -->
+            <!-- Milvus 向量存储: 使用自研 MilvusEmbeddingStoreAdapter + milvus-sdk-java (均为稳定版) -->
+
+            <!-- Workflow Engine: Temporal -->
             <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-milvus</artifactId>
-                <version>${langchain4j.version}</version>
+                <groupId>io.temporal</groupId>
+                <artifactId>temporal-sdk</artifactId>
+                <version>${temporal.version}</version>
             </dependency>
 
-            <!-- LangChain4j Embedding Store: PostgreSQL/pgvector -->
             <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-pgvector</artifactId>
-                <version>${langchain4j.version}</version>
+                <groupId>io.temporal</groupId>
+                <artifactId>temporal-spring-boot-starter</artifactId>
+                <version>${temporal.version}</version>
             </dependency>
 
-            <!-- LangChain4j Easy RAG -->
+            <!-- Resilience4j -->
             <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-easy-rag</artifactId>
-                <version>${langchain4j.version}</version>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-spring-boot3</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+
+            <!-- Lombok -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
             </dependency>
 
             <!-- 定时任务-->
@@ -282,24 +279,40 @@
     <packaging>pom</packaging>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <parameters>true</parameters>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <encoding>${project.build.sourceEncoding}</encoding>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
-            </plugin>
-        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                    <configuration>
+                        <parameters>true</parameters>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 
     <repositories>

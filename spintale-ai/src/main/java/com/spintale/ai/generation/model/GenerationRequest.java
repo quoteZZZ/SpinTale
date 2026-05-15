@@ -64,6 +64,31 @@ public class GenerationRequest implements Serializable {
      */
     private boolean stream;
 
+    /**
+     * 提示词/问题
+     */
+    private String prompt;
+
+    /**
+     * 对话ID
+     */
+    private String conversationId;
+
+    /**
+     * 用户ID
+     */
+    private String userId;
+
+    /**
+     * 温度参数 (0.0 - 1.0)
+     */
+    private Float temperature;
+
+    /**
+     * 最大token数
+     */
+    private Integer maxTokens;
+
     public GenerationRequest() {
         this.extraParams = new HashMap<>();
         this.language = "zh";
@@ -174,6 +199,46 @@ public class GenerationRequest implements Serializable {
         this.stream = stream;
     }
 
+    public String getPrompt() {
+        return prompt;
+    }
+
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
+    }
+
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public Float getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(Float temperature) {
+        this.temperature = temperature;
+    }
+
+    public Integer getMaxTokens() {
+        return maxTokens;
+    }
+
+    public void setMaxTokens(Integer maxTokens) {
+        this.maxTokens = maxTokens;
+    }
+
     /**
      * 构建器模式
      */
@@ -236,6 +301,31 @@ public class GenerationRequest implements Serializable {
 
         public Builder stream(boolean stream) {
             request.setStream(stream);
+            return this;
+        }
+
+        public Builder prompt(String prompt) {
+            request.setPrompt(prompt);
+            return this;
+        }
+
+        public Builder conversationId(String conversationId) {
+            request.setConversationId(conversationId);
+            return this;
+        }
+
+        public Builder userId(String userId) {
+            request.setUserId(userId);
+            return this;
+        }
+
+        public Builder temperature(Float temperature) {
+            request.setTemperature(temperature);
+            return this;
+        }
+
+        public Builder maxTokens(Integer maxTokens) {
+            request.setMaxTokens(maxTokens);
             return this;
         }
 
