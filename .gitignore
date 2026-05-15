@@ -1,53 +1,46 @@
-```
-# Java build artifacts
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
 *.class
-*.jar
-*.war
-*.ear
-
-# Maven
+*.exe
+*.dll
+*.so
+*.a
+*.out
+dist/
+build/
 target/
 
-# Gradle
-.gradle/
-build/
+# Dependencies
+.venv/
+venv/
+node_modules/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/
 
-# IDE specific
-.idea/
-*.iml
-*.ipr
-*.iws
-
-# Logs
+# Logs and temp files
 *.log
+*.tmp
+*.swp
+*.swo
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Package manager
-node_modules/
-
-# Python virtual environments
-venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Temporary files
-*.tmp
+# Editors
+.vscode/
+.idea/
 *.swp
 *.swo
 
-# OS generated files
+# System files
 .DS_Store
 Thumbs.db
 
@@ -74,4 +67,9 @@ Thumbs.db
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-```
+
+# Gradle
+.gradle/
+
+# Original rules preserved
+*.log
