@@ -1,4 +1,4 @@
-package com.spintale.ai.graph;
+package com.spintale.ai.retrieval.graph;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
