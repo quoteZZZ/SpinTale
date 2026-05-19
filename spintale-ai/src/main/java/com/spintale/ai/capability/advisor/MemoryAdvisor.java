@@ -34,6 +34,7 @@ public class MemoryAdvisor implements Advisor {
 
     private final ConversationManager conversationManager;
     private final LongTermMemoryManager longTermMemoryManager;
+    private final ConversationCompressor conversationCompressor;
 
     /** 最大上下文消息数 */
     private int maxContextMessages = 20;
@@ -61,8 +62,15 @@ public class MemoryAdvisor implements Advisor {
 
     public MemoryAdvisor(ConversationManager conversationManager,
                           LongTermMemoryManager longTermMemoryManager) {
+        this(conversationManager, longTermMemoryManager, null);
+    }
+
+    public MemoryAdvisor(ConversationManager conversationManager,
+                         LongTermMemoryManager longTermMemoryManager,
+                         ConversationCompressor conversationCompressor) {
         this.conversationManager = conversationManager;
         this.longTermMemoryManager = longTermMemoryManager;
+        this.conversationCompressor = conversationCompressor;
     }
 
     @Override
@@ -204,7 +212,10 @@ public class MemoryAdvisor implements Advisor {
             result.add(chatMsg);
         }
 
-        return result;
+        if (conversationCompressor == null) {
+            return result;
+        }
+        return conversationCompressor.compress(result, maxMessages);
     }
 
     // ==================== 配置方法 ====================

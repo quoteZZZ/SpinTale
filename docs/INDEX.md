@@ -17,6 +17,7 @@ docs/
 │   ├── SOLUTIONS.md                     # 常见问题解决方案
 │   ├── DATABASE_DESIGN.md               # 数据库设计文档
 │   ├── TECH_SELECTION_REPORT.md         # 技术选型报告 (Milvus/Pinecone, Temporal/Activiti)
+│   ├── JAVA_AI_FRAMEWORK_SELECTION.md   # Java AI 框架选型与 AI 模块结构约束
 │   └── FINAL_OPTIMIZATION_REPORT.md     # 最终优化报告 (最新)
 └── archive/                 # 归档文档（空）
 ```
@@ -36,6 +37,7 @@ docs/
 | **SOLUTIONS.md** | 常见问题解决方案和最佳实践手册 | 全体开发人员 |
 | **DATABASE_DESIGN.md** | 完整的数据库表结构设计，含 AI 模块 10 张新表 | 后端开发/DBA |
 | **TECH_SELECTION_REPORT.md** | 向量数据库和工作流引擎技术选型报告 | 架构师/技术决策者 |
+| **JAVA_AI_FRAMEWORK_SELECTION.md** | Java AI 框架优缺点、SpinTale AI 模块结构约束 | 架构师/后端开发 |
 
 ## 🔗 快速链接
 
@@ -48,6 +50,7 @@ docs/
 - [解决方案](guides/SOLUTIONS.md) - 常见问题与最佳实践
 - [数据库设计](guides/DATABASE_DESIGN.md) - 完整的表结构设计和关系图
 - [技术选型](guides/TECH_SELECTION_REPORT.md) - Milvus vs Pinecone, Temporal vs Activiti
+- [Java AI 框架选型](guides/JAVA_AI_FRAMEWORK_SELECTION.md) - Spring AI、LangChain4j、Semantic Kernel、DJL 等框架对比与结构约束
 
 ## 📦 AI 模块核心功能
 

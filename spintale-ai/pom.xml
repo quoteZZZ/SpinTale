@@ -12,7 +12,7 @@
 
     <artifactId>spintale-ai</artifactId>
     <name>SpinTale AI Module</name>
-    <description>AI text generation framework built on LangChain4j.</description>
+    <description>Provider-agnostic AI module with LangChain4j as the default adapter.</description>
 
     <dependencies>
         <dependency>
@@ -30,7 +30,7 @@
             <artifactId>langchain4j-open-ai</artifactId>
         </dependency>
 
-        <!-- Vector Database: Milvus SDK (稳定版，配合自研 MilvusEmbeddingStoreAdapter) -->
+        <!-- Vector Database: Milvus SDK for the local adapter -->
         <dependency>
             <groupId>io.milvus</groupId>
             <artifactId>milvus-sdk-java</artifactId>

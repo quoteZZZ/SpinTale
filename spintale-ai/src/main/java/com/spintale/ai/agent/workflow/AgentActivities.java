@@ -4,9 +4,9 @@ import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityMethod;
 import com.spintale.ai.generation.model.GenerationRequest;
 import com.spintale.ai.generation.model.GenerationResponse;
-import com.spintale.ai.retrieval.embedding.RetrievalResult;
+import com.spintale.ai.retrieval.vector.RetrievalResult;
 import com.spintale.ai.agent.react.AgentResult;
-import com.spintale.ai.capability.hallucination.HallucinationDetectionResult;
+import com.spintale.ai.capability.hallucination.HallucinationReport;
 import java.util.List;
 
 /**
@@ -61,7 +61,7 @@ public interface AgentActivities {
      * @return Hallucination detection result with confidence score
      */
     @ActivityMethod
-    HallucinationDetectionResult detectHallucination(GenerationResponse response, List<String> context);
+    HallucinationReport detectHallucination(GenerationResponse response, List<String> context);
     
     /**
      * Generate final response after all reasoning steps are complete.

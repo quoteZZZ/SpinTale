@@ -7,7 +7,6 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -18,7 +17,6 @@ import java.util.stream.Collectors;
  * 基于内存和向量嵌入的长期记忆管理器实现
  * 支持语义搜索、重要性评分和记忆压缩
  */
-@Service
 public class InMemoryLongTermMemoryManager implements LongTermMemoryManager {
     
     private static final Logger log = LoggerFactory.getLogger(InMemoryLongTermMemoryManager.class);

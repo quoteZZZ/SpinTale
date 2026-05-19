@@ -2,7 +2,6 @@ package com.spintale.ai.core.service;
 
 import com.spintale.ai.core.model.ChatRequest;
 import com.spintale.ai.core.model.ChatResponse;
-import com.spintale.ai.core.model.StreamHandler;
 
 /**
  * AI 聊天服务接口
@@ -29,4 +28,12 @@ public interface AiChatService {
      * @return 流式响应处理器
      */
     void streamChat(ChatRequest request, StreamHandler handler);
+
+    interface StreamHandler {
+        void onToken(String token);
+
+        void onComplete(ChatResponse response);
+
+        void onError(Throwable error);
+    }
 }

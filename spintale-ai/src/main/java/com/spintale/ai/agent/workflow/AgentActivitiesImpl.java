@@ -6,29 +6,23 @@ import com.spintale.ai.core.model.ChatRequest;
 import com.spintale.ai.core.model.ChatResponse;
 import com.spintale.ai.generation.model.GenerationRequest;
 import com.spintale.ai.generation.model.GenerationResponse;
-import com.spintale.ai.capability.hallucination.HallucinationDetectionService;
-import com.spintale.ai.capability.hallucination.HallucinationDetectionResult;
+import com.spintale.ai.capability.hallucination.HallucinationDetector;
+import com.spintale.ai.capability.hallucination.HallucinationReport;
 import com.spintale.ai.capability.memory.LongTermMemoryManager;
 import com.spintale.ai.capability.memory.LongTermMemory;
-import com.spintale.ai.retrieval.embedding.RetrievalResult;
-import com.spintale.ai.retrieval.embedding.RetrievalService;
+import com.spintale.ai.retrieval.vector.RetrievalResult;
+import com.spintale.ai.retrieval.vector.RetrievalService;
 import com.spintale.ai.tool.registry.AiTool;
-import dev.langchain4j.data.message.UserMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Temporal 活动实现类
- * 
- * 实现 AgentActivities 接口定义的所有活动方法，
- * 为工作流提供具体的业务逻辑执行。
+ * Temporal activity implementation for agent workflow steps.
  */
-@Component
 public class AgentActivitiesImpl implements AgentActivities {
 
     private static final Logger log = LoggerFactory.getLogger(AgentActivitiesImpl.class);
@@ -36,14 +30,14 @@ public class AgentActivitiesImpl implements AgentActivities {
     private final RetrievalService retrievalService;
     private final AiChatService chatService;
     private final Map<String, AiTool> tools;
-    private final HallucinationDetectionService hallucinationService;
+    private final HallucinationDetector hallucinationService;
     private final LongTermMemoryManager memoryManager;
 
     public AgentActivitiesImpl(
             RetrievalService retrievalService,
             AiChatService chatService,
             List<AiTool> toolList,
-            HallucinationDetectionService hallucinationService,
+            HallucinationDetector hallucinationService,
             LongTermMemoryManager memoryManager) {
         this.retrievalService = retrievalService;
         this.chatService = chatService;
@@ -72,15 +66,16 @@ public class AgentActivitiesImpl implements AgentActivities {
 
     @Override
     public GenerationResponse callLLM(GenerationRequest request) {
-        log.info("Calling LLM with prompt length: {}", request.getPrompt().length());
+        String prompt = request == null ? "" : defaultString(request.getPrompt());
+        log.info("Calling LLM with prompt length: {}", prompt.length());
         
         try {
             ChatRequest chatRequest = new ChatRequest();
             // Create ChatMessage using static factory method
-            var userMessage = com.spintale.ai.core.model.ChatMessage.user(request.getPrompt());
+            var userMessage = com.spintale.ai.core.model.ChatMessage.user(prompt);
             chatRequest.setMessages(List.of(userMessage));
-            chatRequest.setTemperature(request.getTemperature() != null ? request.getTemperature().doubleValue() : 0.7);
-            chatRequest.setMaxTokens(request.getMaxTokens());
+            chatRequest.setTemperature(request != null && request.getTemperature() != null ? request.getTemperature().doubleValue() : 0.7);
+            chatRequest.setMaxTokens(request == null ? null : request.getMaxTokens());
             
             ChatResponse response = chatService.chat(chatRequest);
             
@@ -107,7 +102,7 @@ public class AgentActivitiesImpl implements AgentActivities {
         }
         
         try {
-            String result = tool.execute(Map.of("args", toolArgs));
+            String result = tool.execute(parseToolArgs(toolArgs));
             log.info("Tool execution successful: {}", toolName);
             return new AgentResult.ToolExecutionResult(toolName, result, true);
         } catch (Exception e) {
@@ -117,13 +112,13 @@ public class AgentActivitiesImpl implements AgentActivities {
     }
 
     @Override
-    public HallucinationDetectionResult detectHallucination(
+    public HallucinationReport detectHallucination(
             GenerationResponse response, 
             List<String> context) {
         log.info("Detecting hallucinations in response");
         
         if (response == null || response.getContent() == null) {
-            HallucinationDetectionResult result = new HallucinationDetectionResult();
+            HallucinationReport result = new HallucinationReport();
             result.setIsHallucination(false);
             result.setConfidenceScore(0.0);
             result.setSummary("Empty response");
@@ -142,10 +137,10 @@ public class AgentActivitiesImpl implements AgentActivities {
             );
             
             // Convert to workflow-compatible result
-            return HallucinationDetectionResult.from(internalResult);
+            return HallucinationReport.from(internalResult);
         } catch (Exception e) {
             log.error("Hallucination detection failed", e);
-            HallucinationDetectionResult result = new HallucinationDetectionResult();
+            HallucinationReport result = new HallucinationReport();
             result.setIsHallucination(false);
             result.setConfidenceScore(0.5);
             result.setSummary("Detection error: " + e.getMessage());
@@ -163,7 +158,7 @@ public class AgentActivitiesImpl implements AgentActivities {
         
         try {
             String prompt = buildFinalResponsePrompt(
-                request.getPrompt(),
+                request == null ? "" : request.getPrompt(),
                 reasoningTrace,
                 verifiedContext
             );
@@ -173,7 +168,7 @@ public class AgentActivitiesImpl implements AgentActivities {
             var userMessage = com.spintale.ai.core.model.ChatMessage.user(prompt);
             chatRequest.setMessages(List.of(userMessage));
             chatRequest.setTemperature(0.5); // Lower temperature for more deterministic output
-            chatRequest.setMaxTokens(request.getMaxTokens());
+            chatRequest.setMaxTokens(request == null ? null : request.getMaxTokens());
             
             ChatResponse response = chatService.chat(chatRequest);
             
@@ -203,7 +198,7 @@ public class AgentActivitiesImpl implements AgentActivities {
             LongTermMemory memory = new LongTermMemory();
             memory.setUserId(userId);
             memory.setType(LongTermMemory.MemoryType.FACT); // Use FACT type instead of CONVERSATION
-            memory.setContent(request.getPrompt());
+            memory.setContent(request == null ? "" : defaultString(request.getPrompt()));
             memory.setMetadata(Map.of(
                 "conversationId", conversationId,
                 "response", response != null ? response.getContent() : "",
@@ -219,9 +214,6 @@ public class AgentActivitiesImpl implements AgentActivities {
         }
     }
 
-    /**
-     * 构建最终响应生成的 Prompt
-     */
     private String buildFinalResponsePrompt(
             String originalQuery,
             String reasoningTrace,
@@ -231,7 +223,7 @@ public class AgentActivitiesImpl implements AgentActivities {
         prompt.append("Based on the following reasoning process and verified context, ")
               .append("provide a clear and accurate final answer to the user's question.\n\n");
         
-        prompt.append("Original Question: ").append(originalQuery).append("\n\n");
+        prompt.append("Original Question: ").append(defaultString(originalQuery)).append("\n\n");
         
         if (reasoningTrace != null && !reasoningTrace.isEmpty()) {
             prompt.append("Reasoning Process:\n").append(reasoningTrace).append("\n\n");
@@ -248,5 +240,22 @@ public class AgentActivitiesImpl implements AgentActivities {
         prompt.append("Final Answer:");
         
         return prompt.toString();
+    }
+
+    private Map<String, Object> parseToolArgs(String toolArgs) {
+        if (toolArgs == null || toolArgs.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return com.alibaba.fastjson2.JSON.parseObject(
+                    toolArgs,
+                    new com.alibaba.fastjson2.TypeReference<Map<String, Object>>() {});
+        } catch (Exception ignored) {
+            return Map.of("args", toolArgs);
+        }
+    }
+
+    private String defaultString(String value) {
+        return value == null ? "" : value;
     }
 }

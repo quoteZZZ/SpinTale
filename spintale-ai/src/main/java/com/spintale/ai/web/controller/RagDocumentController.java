@@ -1,76 +1,53 @@
 package com.spintale.ai.web.controller;
 
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
+import com.spintale.ai.retrieval.ingestion.DocumentIndexService;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
+import java.util.ArrayList;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * RAG 文档管理控制器
- * 
- * 提供文档上传、索引、删除和查询功能
+ * RAG document indexing and search API.
  */
 @RestController
 @RequestMapping("/ai/rag")
+@ConditionalOnBean(DocumentIndexService.class)
 public class RagDocumentController {
 
     private static final Logger log = LoggerFactory.getLogger(RagDocumentController.class);
 
-    private final com.spintale.ai.retrieval.embedding.RetrievalService retrievalService;
-    private final Map<String, String> indexedDocuments = new ConcurrentHashMap<>();
+    private final DocumentIndexService indexService;
 
-    public RagDocumentController(com.spintale.ai.retrieval.embedding.RetrievalService retrievalService) {
-        this.retrievalService = retrievalService;
+    public RagDocumentController(DocumentIndexService indexService) {
+        this.indexService = indexService;
     }
 
-    /**
-     * 上传并索引文档
-     */
     @PostMapping("/upload")
     public ResponseEntity<Map<String, Object>> uploadDocument(
             @RequestParam("file") MultipartFile file) throws IOException {
         
         log.info("Uploading document: {}", file.getOriginalFilename());
-        
-        // 保存临时文件
-        Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"), "spintale-docs");
-        Files.createDirectories(tempDir);
-        
-        Path filePath = tempDir.resolve(UUID.randomUUID() + "_" + file.getOriginalFilename());
-        Files.write(filePath, file.getBytes());
-        
+
         try {
-            // 加载文档
-            Document document = FileSystemDocumentLoader.loadDocument(filePath.toString());
-            
-            // 索引文档
-            retrievalService.indexDocuments(List.of(document));
-            
-            // 记录已索引的文档
-            String docId = UUID.randomUUID().toString();
-            indexedDocuments.put(docId, file.getOriginalFilename());
-            
-            log.info("Document indexed successfully: {}", file.getOriginalFilename());
+            DocumentIndexService.IndexedDocument indexed =
+                    indexService.index(file.getOriginalFilename(), file.getBytes());
+
+            log.info("Document indexed successfully: {}", indexed.filename());
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "documentId", docId,
-                "filename", file.getOriginalFilename(),
+                "documentId", indexed.id(),
+                "filename", indexed.filename(),
+                "indexedAt", indexed.indexedAt(),
                 "message", "Document uploaded and indexed successfully"
             ));
         } catch (Exception e) {
@@ -79,83 +56,56 @@ public class RagDocumentController {
                 "success", false,
                 "error", e.getMessage()
             ));
-        } finally {
-            // 清理临时文件
-            Files.deleteIfExists(filePath);
         }
     }
 
-    /**
-     * 批量上传文档
-     */
     @PostMapping("/upload/batch")
     public ResponseEntity<Map<String, Object>> uploadBatch(
             @RequestParam("files") List<MultipartFile> files) throws IOException {
         
         log.info("Uploading {} documents", files.size());
-        
-        int successCount = 0;
-        int failCount = 0;
-        
+
+        List<DocumentIndexService.UploadDocument> documents = new ArrayList<>();
         for (MultipartFile file : files) {
+            byte[] content;
             try {
-                Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"), "spintale-docs");
-                Files.createDirectories(tempDir);
-                
-                Path filePath = tempDir.resolve(UUID.randomUUID() + "_" + file.getOriginalFilename());
-                Files.write(filePath, file.getBytes());
-                
-                Document document = FileSystemDocumentLoader.loadDocument(filePath.toString());
-                retrievalService.indexDocuments(List.of(document));
-                
-                String docId = UUID.randomUUID().toString();
-                indexedDocuments.put(docId, file.getOriginalFilename());
-                
-                successCount++;
-                Files.deleteIfExists(filePath);
-            } catch (Exception e) {
-                log.error("Failed to index document: {}", file.getOriginalFilename(), e);
-                failCount++;
+                content = file.getBytes();
+            } catch (IOException ex) {
+                content = null;
             }
+            documents.add(new DocumentIndexService.UploadDocument(file.getOriginalFilename(), content));
         }
-        
+        DocumentIndexService.BatchResult result = indexService.indexAll(documents);
+
         return ResponseEntity.ok(Map.of(
             "success", true,
-            "totalFiles", files.size(),
-            "successCount", successCount,
-            "failCount", failCount,
-            "message", String.format("Indexed %d/%d documents", successCount, files.size())
+            "totalFiles", result.total(),
+            "successCount", result.successCount(),
+            "failCount", result.failCount(),
+            "documents", result.documents(),
+            "errors", result.errors(),
+            "message", String.format("Indexed %d/%d documents", result.successCount(), result.total())
         ));
     }
 
-    /**
-     * 删除已索引的文档
-     */
     @DeleteMapping("/{documentId}")
     public ResponseEntity<Map<String, Object>> deleteDocument(
             @PathVariable String documentId) {
         
         log.info("Deleting document: {}", documentId);
         
-        String filename = indexedDocuments.remove(documentId);
-        if (filename == null) {
+        boolean removed = indexService.forget(documentId);
+        if (!removed) {
             return ResponseEntity.notFound().build();
         }
-        
-        // 注意：当前实现不支持单个文档删除，需要重建索引
-        // 生产环境应实现更精细的文档管理
-        
+
         return ResponseEntity.ok(Map.of(
             "success", true,
             "documentId", documentId,
-            "filename", filename,
-            "message", "Document removed from index (note: full reindex may be required)"
+            "message", "Document metadata removed; rebuild the vector index for physical deletion"
         ));
     }
 
-    /**
-     * 查询文档
-     */
     @GetMapping("/search")
     public ResponseEntity<Map<String, Object>> searchDocuments(
             @RequestParam("query") String query,
@@ -165,7 +115,7 @@ public class RagDocumentController {
         log.info("Searching for: {}", query);
         
         try {
-            List<EmbeddingMatch<TextSegment>> results = retrievalService.search(query, topK, minScore);
+            List<EmbeddingMatch<TextSegment>> results = indexService.search(query, topK, minScore);
             
             List<Map<String, Object>> formattedResults = results.stream()
                 .map(match -> {
@@ -192,33 +142,22 @@ public class RagDocumentController {
         }
     }
 
-    /**
-     * 获取已索引的文档列表
-     */
     @GetMapping("/documents")
     public ResponseEntity<Map<String, Object>> listDocuments() {
+        List<DocumentIndexService.IndexedDocument> documents = indexService.listDocuments();
         return ResponseEntity.ok(Map.of(
             "success", true,
-            "documents", indexedDocuments.entrySet().stream()
-                .map(entry -> Map.of(
-                    "id", entry.getKey(),
-                    "filename", entry.getValue()
-                ))
-                .toList(),
-            "count", indexedDocuments.size()
+            "documents", documents,
+            "count", documents.size()
         ));
     }
 
-    /**
-     * 清除所有索引
-     */
     @DeleteMapping("/clear")
     public ResponseEntity<Map<String, Object>> clearIndex() {
         log.info("Clearing all indexes");
         
         try {
-            retrievalService.clearIndex();
-            indexedDocuments.clear();
+            indexService.clear();
             
             return ResponseEntity.ok(Map.of(
                 "success", true,

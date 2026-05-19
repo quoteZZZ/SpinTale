@@ -18,6 +18,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
 /**
@@ -291,41 +297,38 @@ public class ReActAgent implements AgentService {
     private String executeToolWithTimeout(String toolName, String argsJson) {
         Function<Map<String, Object>, String> tool = tools.get(toolName);
         if (tool == null) {
-            return "错误：未找到工具 '" + toolName + "'";
+            return "Error: tool not found - " + toolName;
         }
 
+        Future<String> future = null;
+        ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+            Thread thread = new Thread(r, "tool-" + toolName.replaceAll("[^A-Za-z0-9_.-]", "_"));
+            thread.setDaemon(true);
+            return thread;
+        });
         try {
             Map<String, Object> args = parseJsonArgs(argsJson);
-
-            // 使用 Thread + join 实现超时
-            final String[] result = {null};
-            final Exception[] error = {null};
-
-            Thread toolThread = new Thread(() -> {
-                try {
-                    result[0] = tool.apply(args);
-                } catch (Exception e) {
-                    error[0] = e;
-                }
-            }, "tool-" + toolName);
-
-            toolThread.start();
-            toolThread.join(toolExecutionTimeoutMs);
-
-            if (toolThread.isAlive()) {
-                toolThread.interrupt();
-                return "错误：工具执行超时（" + toolExecutionTimeoutMs + "ms）";
+            future = executor.submit(() -> {
+                String result = tool.apply(args);
+                return result != null ? result : "(tool returned no value)";
+            });
+            return future.get(toolExecutionTimeoutMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            if (future != null) {
+                future.cancel(true);
             }
-
-            if (error[0] != null) {
-                return "错误：执行失败 - " + error[0].getMessage();
-            }
-
-            return result[0] != null ? result[0] : "（工具无返回值）";
-
+            return "Error: tool execution timed out (" + toolExecutionTimeoutMs + "ms)";
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            return "Error: tool execution failed - " + cause.getMessage();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "Error: tool execution interrupted";
         } catch (Exception e) {
             log.error("Tool execution failed: {}", toolName, e);
-            return "错误：执行失败 - " + e.getMessage();
+            return "Error: tool execution failed - " + e.getMessage();
+        } finally {
+            executor.shutdownNow();
         }
     }
 

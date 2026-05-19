@@ -5,7 +5,7 @@ import io.temporal.workflow.WorkflowMethod;
 import com.spintale.ai.agent.react.AgentResult;
 import com.spintale.ai.generation.model.GenerationRequest;
 import com.spintale.ai.generation.model.GenerationResponse;
-import com.spintale.ai.capability.hallucination.HallucinationDetectionResult;
+import com.spintale.ai.capability.hallucination.HallucinationReport;
 
 /**
  * Temporal Workflow interface for AI Agent orchestration.

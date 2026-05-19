@@ -1,9 +1,6 @@
 package com.spintale.ai.capability.advisor;
 
-import com.spintale.ai.capability.advisor.Advisor;
-import com.spintale.ai.capability.advisor.AdvisorContext;
-import com.spintale.ai.capability.advisor.AdvisorRequest;
-import com.spintale.ai.capability.advisor.AdvisorResponse;
+import com.spintale.ai.capability.observability.CostMonitor;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -29,6 +26,7 @@ public class ObservabilityAdvisor implements Advisor {
     private static final Logger log = LoggerFactory.getLogger(ObservabilityAdvisor.class);
 
     private final MeterRegistry meterRegistry;
+    private final CostMonitor costMonitor;
 
     // 指标
     private Counter requestCounter;
@@ -39,7 +37,12 @@ public class ObservabilityAdvisor implements Advisor {
     private io.micrometer.core.instrument.DistributionSummary tokenOutputSummary;
 
     public ObservabilityAdvisor(MeterRegistry meterRegistry) {
+        this(meterRegistry, null);
+    }
+
+    public ObservabilityAdvisor(MeterRegistry meterRegistry, CostMonitor costMonitor) {
         this.meterRegistry = meterRegistry;
+        this.costMonitor = costMonitor;
         initMetrics();
     }
 
@@ -131,6 +134,13 @@ public class ObservabilityAdvisor implements Advisor {
                     response.getTokenUsage().getPromptTokens(),
                     response.getTokenUsage().getCompletionTokens(),
                     response.getTokenUsage().getTotalTokens());
+
+            if (costMonitor != null && response.getModel() != null && !response.getModel().isBlank()) {
+                costMonitor.recordUsage(
+                        response.getModel(),
+                        response.getTokenUsage().getPromptTokens(),
+                        response.getTokenUsage().getCompletionTokens());
+            }
         }
 
         // 记录幻觉检测

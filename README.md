@@ -51,30 +51,27 @@ SpinTale
 
 ```text
 spintale-ai
-├─ agent           # ReAct Agent 实现
-├─ client          # AI 模型客户端（OpenAI、Azure、Ollama）
-├─ config          # AI 相关配置
-├─ core            # 核心工具和常量
+├─ core            # 框架无关核心模型、注解、异常、Prompt、服务接口
+├─ capability      # Advisor、Memory、Cache、Hallucination、Observability
+├─ agent           # ReAct Agent、多 Agent、Temporal 工作流编排
 ├─ generation      # 内容生成（模板、服务）
-├─ hallucination   # 幻觉检测与缓解
-├─ mcp             # MCP 协议支持
-├─ memory          # 长期记忆系统（Redis 持久化）
-├─ prompt          # Prompt 模板引擎
-├─ retrieval       # RAG 检索（Milvus、文档解析）
-├─ skill           # 技能管理系统
-├─ tool            # 工具实现（Weather、HTTP、File）
-├─ web             # Web 控制器和 SSE 流式输出
-└─ workflow        # Temporal 工作流编排（新增）
+├─ retrieval       # RAG 检索（Milvus、文档解析、Graph RAG）
+├─ tool            # ToolRegistry、MCP、内置工具
+├─ infrastructure  # 外部模型 provider、Spring 配置、客户端、代理、适配器
+├─ support         # 日志脱敏等支撑能力
+└─ web             # Web 控制器、DTO、异常处理
 ```
+
+AI 框架选型与包结构约束见 [Java AI 框架选型与 SpinTale 结构优化](docs/guides/JAVA_AI_FRAMEWORK_SELECTION.md)。
 
 ## 本地环境
 
-当前推荐的本机安装路径如下，全部放在 D 盘根目录：
+当前推荐的本机安装路径如下，JDK 使用本机已安装的 Microsoft OpenJDK 17：
 
 | 软件 | 路径 |
 | --- | --- |
 | IntelliJ IDEA | `D:\JetBrains\IntelliJ IDEA 2026.1.1` |
-| JDK | `D:\JDK` |
+| JDK | `C:\Users\v1589\.jdks\ms-17.0.19` |
 | Maven | `D:\Maven` |
 | MySQL | `D:\MySQL` |
 | Redis | `D:\Redis` |
@@ -84,8 +81,8 @@ spintale-ai
 PowerShell 临时环境变量示例：
 
 ```powershell
-$env:JAVA_HOME='D:\JDK'
-$env:Path='D:\JDK\bin;D:\Maven\bin;D:\MySQL\bin;D:\Redis;' + $env:Path
+$env:JAVA_HOME='C:\Users\v1589\.jdks\ms-17.0.19'
+$env:Path='C:\Users\v1589\.jdks\ms-17.0.19\bin;D:\Maven\bin;D:\MySQL\bin;D:\Redis;' + $env:Path
 ```
 
 ## 数据库和缓存
@@ -156,7 +153,7 @@ Druid 默认登录：
 ## IntelliJ IDEA 导入
 
 1. 使用 IDEA 打开 `D:\GitCode\SpinTale1.0\SpinTale`。
-2. Project SDK 选择 `D:\JDK` 或 IDEA 自带 JBR 17。
+2. Project SDK 选择 `C:\Users\v1589\.jdks\ms-17.0.19` 或 IDEA 自带 JBR 17。
 3. Maven Home 选择 `D:\Maven`，或使用 IDEA Bundled Maven。
 4. 刷新 Maven 项目，确认根 `pom.xml` 下的 6 个模块全部导入。
 5. 运行配置选择 `com.spintale.SpinTaleApplication`，Working directory 使用项目根目录。

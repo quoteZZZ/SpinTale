@@ -1,9 +1,9 @@
 package com.spintale.ai.tool.registry;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.model.chat.ChatModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -28,6 +28,18 @@ public class ToolRegistry {
 
     /** 注册的工具定义 */
     private final Map<String, RegisteredTool> tools = new ConcurrentHashMap<>();
+
+    public ToolRegistry() {
+    }
+
+    @Autowired
+    public ToolRegistry(List<AiTool> aiTools) {
+        if (aiTools != null) {
+            aiTools.stream()
+                    .filter(tool -> tool != null && tool.isEnabled())
+                    .forEach(tool -> register(tool.getName(), tool.getDescription(), tool::execute, null));
+        }
+    }
 
     /**
      * 注册工具

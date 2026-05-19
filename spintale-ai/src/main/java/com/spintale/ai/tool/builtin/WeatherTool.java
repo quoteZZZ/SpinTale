@@ -1,45 +1,41 @@
 package com.spintale.ai.tool.builtin;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import java.net.URI;
+import java.util.Map;
+import java.util.Set;
+
+import com.spintale.ai.infrastructure.properties.AiProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.spintale.ai.tool.registry.AiTool;
 import com.spintale.ai.tool.registry.AiTool.ToolSchema;
 
-import java.net.URI;
-import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * 天气查询工具
- * 
- * 集成OpenWeatherMap API提供真实天气数据
- * API文档: https://openweathermap.org/api
- * 
- * 配置方式:
- * spintale:
- *   ai:
- *     tools:
- *       weather:
- *         api-key: YOUR_API_KEY
- *         base-url: https://api.openweathermap.org/data/2.5
+ * Current weather tool backed by OpenWeatherMap.
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "spintale.ai.tools.weather", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class WeatherTool implements AiTool {
 
-    @Value("${spintale.ai.tools.weather.api-key:demo}")
-    private String apiKey;
-    
-    @Value("${spintale.ai.tools.weather.base-url:https://api.openweathermap.org/data/2.5}")
-    private String baseUrl;
-    
+    private static final Set<String> ALLOWED_UNITS = Set.of("metric", "imperial", "standard");
+
+    private final AiProperties properties;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public WeatherTool(AiProperties properties) {
+        this.properties = properties;
+    }
 
     @Override
     public String getName() {
@@ -48,93 +44,108 @@ public class WeatherTool implements AiTool {
 
     @Override
     public String getDescription() {
-        return "获取指定城市的当前天气信息，包括温度、湿度、天气状况、风速等。支持摄氏度和华氏度。";
+        return "Get current weather for a city, including temperature, humidity, condition, wind, and visibility.";
     }
 
     @Override
     public ToolSchema getSchema() {
         return ToolSchema.builder()
-                .addProperty("city", "string", "城市名称（如：Beijing, Shanghai, New York）", true)
-                .addProperty("unit", "string", "温度单位：metric(摄氏度), imperial(华氏度), standard(开尔文)，默认metric", false)
-                .addProperty("lang", "string", "语言代码：zh_cn(中文), en(英文)等，默认zh_cn", false)
+                .addProperty("city", "string", "City name, for example Beijing, Shanghai, or New York.", true)
+                .addProperty("unit", "string", "Temperature unit: metric, imperial, or standard. Default: metric.", false)
+                .addProperty("lang", "string", "OpenWeatherMap language code. Default: zh_cn.", false)
                 .build();
     }
 
     @Override
     public String execute(Map<String, Object> arguments) {
-        String city = (String) arguments.get("city");
-        String unit = (String) arguments.getOrDefault("unit", "metric");
-        String lang = (String) arguments.getOrDefault("lang", "zh_cn");
-        
-        if (city == null || city.trim().isEmpty()) {
-            return "{\"error\":\"城市名称不能为空\"}";
+        String city = asString(arguments, "city", "");
+        String unit = normalizeUnit(asString(arguments, "unit", "metric"));
+        String lang = asString(arguments, "lang", "zh_cn");
+        var weather = properties.getTools().getWeather();
+        String apiKey = weather.getApiKey();
+
+        if (city.isBlank()) {
+            return error("city is required");
         }
-        
-        log.info("Fetching weather for city: {}, unit: {}, lang: {}", city, unit, lang);
-        
+
+        if (apiKey == null || apiKey.isBlank() || "demo".equalsIgnoreCase(apiKey)) {
+            log.debug("Using demo weather data because no API key is configured");
+            return getDemoWeather(city, unit);
+        }
+
         try {
-            // 构建API URL
-            URI uri = UriComponentsBuilder.fromUriString(baseUrl + "/weather")
+            URI uri = UriComponentsBuilder.fromUriString(weather.getBaseUrl() + "/weather")
                     .queryParam("q", city)
                     .queryParam("appid", apiKey)
                     .queryParam("units", unit)
                     .queryParam("lang", lang)
                     .build()
+                    .encode()
                     .toUri();
-            
-            // 调用API
+
             ResponseEntity<String> response = restTemplate.getForEntity(uri, String.class);
-            
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                // 解析并格式化响应
-                JsonNode jsonNode = objectMapper.readTree(response.getBody());
-                
-                // 提取关键信息
-                String result = objectMapper.createObjectNode()
-                        .put("city", jsonNode.get("name").asText())
-                        .put("country", jsonNode.get("sys").get("country").asText())
-                        .put("temperature", jsonNode.get("main").get("temp").asDouble())
-                        .put("feels_like", jsonNode.get("main").get("feels_like").asDouble())
-                        .put("humidity", jsonNode.get("main").get("humidity").asInt())
-                        .put("pressure", jsonNode.get("main").get("pressure").asInt())
-                        .put("condition", jsonNode.get("weather").get(0).get("description").asText())
-                        .put("wind_speed", jsonNode.get("wind").get("speed").asDouble())
-                        .put("visibility", jsonNode.has("visibility") ? jsonNode.get("visibility").asInt() : 0)
-                        .put("timestamp", System.currentTimeMillis())
-                        .toString();
-                
-                log.debug("Weather data fetched successfully for {}", city);
-                return result;
-            } else {
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 log.warn("Failed to fetch weather data: {}", response.getStatusCode());
-                return "{\"error\":\"无法获取天气数据，请检查城市名称\"}";
+                return error("failed to fetch weather data");
             }
-            
+
+            return formatWeather(response.getBody());
         } catch (Exception e) {
             log.error("Error fetching weather data for city: {}", city, e);
-            
-            // 降级：返回模拟数据（仅用于演示）
-            if ("demo".equals(apiKey)) {
-                log.info("Using demo mode (no valid API key)");
-                return getDemoWeather(city, unit);
-            }
-            
-            return String.format("{\"error\":\"查询失败: %s\"}", e.getMessage());
+            return error("weather query failed: " + e.getMessage());
         }
     }
-    
-    /**
-     * 演示模式：返回模拟数据（仅在无API key时使用）
-     */
+
+    private String formatWeather(String body) throws Exception {
+        JsonNode root = objectMapper.readTree(body);
+        ObjectNode result = objectMapper.createObjectNode();
+        result.put("city", root.path("name").asText(""));
+        result.put("country", root.path("sys").path("country").asText(""));
+        result.put("temperature", root.path("main").path("temp").asDouble());
+        result.put("feels_like", root.path("main").path("feels_like").asDouble());
+        result.put("humidity", root.path("main").path("humidity").asInt());
+        result.put("pressure", root.path("main").path("pressure").asInt());
+        result.put("condition", root.path("weather").path(0).path("description").asText(""));
+        result.put("wind_speed", root.path("wind").path("speed").asDouble());
+        result.put("visibility", root.path("visibility").asInt());
+        result.put("timestamp", System.currentTimeMillis());
+        return result.toString();
+    }
+
     private String getDemoWeather(String city, String unit) {
-        double temp = 20 + Math.random() * 15; // 20-35度
-        int humidity = 40 + (int)(Math.random() * 40); // 40-80%
-        String[] conditions = {"晴天", "多云", "阴天", "小雨"};
-        String condition = conditions[(int)(Math.random() * conditions.length)];
-        
-        return String.format(
-            "{\"city\":\"%s\",\"temperature\":%.1f,\"feels_like\":%.1f,\"humidity\":%d,\"condition\":\"%s\",\"wind_speed\":%.1f,\"note\":\"演示数据，请配置API key获取真实数据\"}",
-            city, temp, temp - 2, humidity, condition, 2 + Math.random() * 5
-        );
+        double temp = 20 + Math.random() * 15;
+        int humidity = 40 + (int) (Math.random() * 40);
+        String[] conditions = {"sunny", "cloudy", "overcast", "light rain"};
+        String condition = conditions[(int) (Math.random() * conditions.length)];
+
+        ObjectNode result = objectMapper.createObjectNode();
+        result.put("city", city);
+        result.put("unit", unit);
+        result.put("temperature", Math.round(temp * 10.0) / 10.0);
+        result.put("feels_like", Math.round((temp - 2) * 10.0) / 10.0);
+        result.put("humidity", humidity);
+        result.put("condition", condition);
+        result.put("wind_speed", Math.round((2 + Math.random() * 5) * 10.0) / 10.0);
+        result.put("note", "demo data; configure spintale.ai.tools.weather.api-key for live data");
+        return result.toString();
+    }
+
+    private String normalizeUnit(String unit) {
+        String normalized = unit == null ? "metric" : unit.trim().toLowerCase();
+        return ALLOWED_UNITS.contains(normalized) ? normalized : "metric";
+    }
+
+    private String asString(Map<String, Object> arguments, String key, String defaultValue) {
+        if (arguments == null) {
+            return defaultValue;
+        }
+        Object value = arguments.get(key);
+        return value == null ? defaultValue : String.valueOf(value).trim();
+    }
+
+    private String error(String message) {
+        ObjectNode error = objectMapper.createObjectNode();
+        error.put("error", message);
+        return error.toString();
     }
 }

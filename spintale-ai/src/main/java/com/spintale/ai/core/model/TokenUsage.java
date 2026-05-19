@@ -14,7 +14,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TokenUsage {
 
+    @Builder.Default
     private Integer promptTokens = 0;
+    @Builder.Default
     private Integer completionTokens = 0;
+    @Builder.Default
     private Integer totalTokens = 0;
 }

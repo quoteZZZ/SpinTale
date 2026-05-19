@@ -2,6 +2,7 @@ package com.spintale.ai.retrieval.graph;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -11,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(prefix = "spintale.ai.rag.graph", name = "enabled", havingValue = "true")
 public class GraphRagService {
 
     // 内存图谱存储（生产环境应使用 Neo4j/NebulaGraph）

@@ -9,6 +9,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import com.spintale.ai.core.model.TokenUsage;
+import com.spintale.ai.generation.model.GenerationRequest.ContentType;
 
 /**
  * AI 内容生成响应

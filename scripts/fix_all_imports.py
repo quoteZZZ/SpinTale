@@ -28,7 +28,13 @@ IMPORT_MAPPINGS = {
     r'import\s+com\.spintale\.ai\.workflow\.': 'import com.spintale.ai.agent.workflow.',
     
     # observability 模块（原 infrastructure/metrics）
-    r'import\s+com\.spintale\.ai\.infrastructure\.metrics\.': 'import com.spintale.ai.observability.',
+    r'import\s+com\.spintale\.ai\.infrastructure\.metrics\.': 'import com.spintale.ai.capability.observability.',
+    r'import\s+com\.spintale\.ai\.observability\.': 'import com.spintale.ai.capability.observability.',
+
+    # core/infrastructure 边界
+    r'import\s+com\.spintale\.ai\.prompt\.': 'import com.spintale.ai.core.prompt.',
+    r'import\s+com\.spintale\.ai\.core\.adapter\.': 'import com.spintale.ai.infrastructure.adapter.',
+    r'import\s+com\.spintale\.ai\.proxy\.': 'import com.spintale.ai.infrastructure.proxy.',
     
     # generation 模块
     r'import\s+com\.spintale\.ai\.generation\.service\.': 'import com.spintale.ai.generation.text.',

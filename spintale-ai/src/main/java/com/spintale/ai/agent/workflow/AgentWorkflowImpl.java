@@ -4,9 +4,9 @@ import io.temporal.spring.boot.WorkflowImpl;
 import io.temporal.workflow.Workflow;
 import com.spintale.ai.generation.model.GenerationRequest;
 import com.spintale.ai.generation.model.GenerationResponse;
-import com.spintale.ai.retrieval.embedding.RetrievalResult;
+import com.spintale.ai.retrieval.vector.RetrievalResult;
 import com.spintale.ai.agent.react.AgentResult;
-import com.spintale.ai.capability.hallucination.HallucinationDetectionResult;
+import com.spintale.ai.capability.hallucination.HallucinationReport;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -85,7 +85,7 @@ public class AgentWorkflowImpl implements AgentWorkflow {
         }
         
         // Step 3: Detect hallucinations in the response
-        HallucinationDetectionResult hallucinationCheck = activities.detectHallucination(
+        HallucinationReport hallucinationCheck = activities.detectHallucination(
             intermediateResponse,
             contextDocuments
         );
@@ -172,7 +172,7 @@ public class AgentWorkflowImpl implements AgentWorkflow {
     
     private List<String> filterHighConfidenceDocuments(
         List<String> documents,
-        HallucinationDetectionResult detection
+        HallucinationReport detection
     ) {
         // Filter documents based on hallucination detection feedback
         // In production, this would use more sophisticated logic
