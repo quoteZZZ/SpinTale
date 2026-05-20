@@ -19,13 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 import com.spintale.ai.agent.react.api.AgentCallback;
@@ -402,13 +396,21 @@ public class ReActAgent implements AgentService, DisposableBean {
     }
 
     /**
-     * 执行工具（带超时保护）
+     * 执行工具的线程池（有界线程池，防止OOM）
+     * 配置：核心线程数10，最大线程数50，队列容量1000，使用CallerRunsPolicy拒绝策略
      */
-    private static final ExecutorService TOOL_EXECUTOR = Executors.newCachedThreadPool(r -> {
-        Thread thread = new Thread(r, "tool-executor");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private static final ThreadPoolExecutor TOOL_EXECUTOR = new ThreadPoolExecutor(
+            10,  // 核心线程数
+            50,  // 最大线程数
+            60L, TimeUnit.SECONDS,  // 空闲线程存活时间
+            new LinkedBlockingQueue<>(1000),  // 有界队列，容量1000
+            r -> {
+                Thread thread = new Thread(r, "tool-executor");
+                thread.setDaemon(true);
+                return thread;
+            },
+            new ThreadPoolExecutor.CallerRunsPolicy()  // 拒绝策略：由调用线程执行
+    );
 
     private String executeToolWithTimeout(String toolName, String argsJson) {
         Function<Map<String, Object>, String> tool = tools.get(toolName);

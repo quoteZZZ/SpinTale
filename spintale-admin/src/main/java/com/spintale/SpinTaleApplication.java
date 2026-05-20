@@ -1,5 +1,7 @@
 package com.spintale;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
@@ -12,10 +14,11 @@ import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 @SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })
 public class SpinTaleApplication
 {
+    private static final Logger log = LoggerFactory.getLogger(SpinTaleApplication.class);
+    
     public static void main(String[] args)
     {
-        // System.setProperty("spring.devtools.restart.enabled", "false");
         SpringApplication.run(SpinTaleApplication.class, args);
-        System.out.println("SpinTale backend started successfully.");
+        log.info("SpinTale backend started successfully.");
     }
 }

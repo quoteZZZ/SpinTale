@@ -1,8 +1,10 @@
 package com.spintale.ai.api.provider.openai;
 
 import com.spintale.ai.api.provider.langchain4j.LangChain4jChatModelAdapter;
+import com.spintale.ai.api.provider.langchain4j.LangChain4jStreamingChatModelAdapter;
 import com.spintale.ai.core.constant.AiConstants;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.Builder;
 
 /**
@@ -32,7 +34,6 @@ public class OpenAiProvider {
      * @return ChatModel instance
      */
     public com.spintale.ai.core.spi.ChatModel createChatModel() {
-        // Create LangChain4j OpenAI model
         OpenAiChatModel lcModel = OpenAiChatModel.builder()
             .apiKey(apiKey)
             .baseUrl(baseUrl)
@@ -41,7 +42,6 @@ public class OpenAiProvider {
             .maxTokens(maxTokens)
             .build();
 
-        // Wrap with SpinTale adapter
         return new LangChain4jChatModelAdapter(
             AiConstants.PROVIDER_OPENAI,
             modelName,
@@ -50,14 +50,24 @@ public class OpenAiProvider {
     }
 
     /**
-     * Create a ChatModel adapter with streaming support.
-     * Note: Streaming support requires LangChain4j 1.14+ with OpenAiStreamingChatModel.
+     * Create a StreamingChatModel adapter for OpenAI.
+     * LangChain4j 1.13.1+ provides OpenAiStreamingChatModel.
      *
-     * @return ChatModel instance (streaming not yet supported in current version)
+     * @return StreamingChatModel instance
      */
-    public com.spintale.ai.core.spi.ChatModel createStreamingChatModel() {
-        // TODO: Add streaming support when LangChain4j provides OpenAiStreamingChatModel
-        // For now, return regular model
-        return createChatModel();
+    public com.spintale.ai.core.spi.StreamingChatModel createStreamingChatModel() {
+        OpenAiStreamingChatModel streamingModel = OpenAiStreamingChatModel.builder()
+            .apiKey(apiKey)
+            .baseUrl(baseUrl)
+            .modelName(modelName)
+            .temperature(temperature)
+            .maxTokens(maxTokens)
+            .build();
+
+        return new LangChain4jStreamingChatModelAdapter(
+            AiConstants.PROVIDER_OPENAI,
+            modelName,
+            streamingModel
+        );
     }
 }

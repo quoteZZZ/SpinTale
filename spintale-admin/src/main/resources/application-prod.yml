@@ -1,0 +1,122 @@
+# ============================================================================
+# 生产环境配置
+# 注意：所有敏感信息必须通过环境变量注入，禁止明文配置
+# ============================================================================
+
+server:
+  port: ${SERVER_PORT:8080}
+  tomcat:
+    max: 1000
+    min-spare: 200
+
+spring:
+  datasource:
+    druid:
+      master:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        initial-size: 10
+        min-idle: 20
+        max-active: 100
+      slave:
+        enabled: ${DB_SLAVE_ENABLED:false}
+        url: ${DB_SLAVE_URL:}
+        username: ${DB_SLAVE_USERNAME:}
+        password: ${DB_SLAVE_PASSWORD:}
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD}
+      lettuce:
+        pool:
+          min-idle: 5
+          max-idle: 20
+          max-active: 50
+
+logging:
+  level:
+    com.spintale: info
+    org.springframework: warn
+  file:
+    name: /var/log/spintale/spintale.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+
+token:
+  secret: ${TOKEN_SECRET}
+  expireTime: ${TOKEN_EXPIRE_TIME:30}
+
+spintale:
+  profile: ${UPLOAD_PATH:/data/spintale/uploads}
+  captchaEnabled: true
+  addressEnabled: true
+  weatherEnabled: false
+  eventEnabled: false
+
+spintale.ai:
+  enabled: ${AI_ENABLED:true}
+  provider: ${AI_PROVIDER:openai-compatible}
+  model: ${AI_MODEL:deepseek-v4-flash}
+  
+  openai-compatible:
+    enabled: true
+    api-key: ${DEEPSEEK_API_KEY}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+    model-name: ${DEEPSEEK_MODEL:deepseek-v4-flash}
+    timeout: 60000
+  
+  memory:
+    session:
+      expire-minutes: 60
+      max-size: 50000
+  
+  rag:
+    enabled: true
+    vector-store: milvus
+    vector:
+      milvus:
+        enabled: true
+        host: ${MILVUS_HOST:localhost}
+        port: ${MILVUS_PORT:19530}
+        database: ${MILVUS_DATABASE:spintale_prod}
+        collection: ${MILVUS_COLLECTION:embeddings}
+  
+  telemetry:
+    enabled: true
+    service-name: spintale-ai-prod
+    otlp:
+      enabled: ${OTLP_ENABLED:false}
+      endpoint: ${OTLP_ENDPOINT:http://localhost:4317}
+    logging:
+      enabled: true
+      log-payload: false
+      mask-sensitive: true
+  
+  resilience:
+    circuit-breaker:
+      enabled: true
+      failure-rate-threshold: 30
+      slow-call-rate-threshold: 80
+      sliding-window-size: 100
+      wait-duration-in-open-state: 60s
+    rate-limiter:
+      enabled: true
+      limit-for-period: 100
+      limit-refresh-period: 1s
+  
+  security:
+    encrypt-api-key: true
+    quota:
+      enabled: true
+      daily-token-limit: ${DAILY_TOKEN_LIMIT:1000000}
+      monthly-token-limit: ${MONTHLY_TOKEN_LIMIT:10000000}
+
+springdoc:
+  swagger-ui:
+    enabled: false

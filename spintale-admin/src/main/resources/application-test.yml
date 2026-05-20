@@ -1,0 +1,60 @@
+# ============================================================================
+# 测试环境配置
+# ============================================================================
+
+server:
+  port: 8081
+
+spring:
+  datasource:
+    druid:
+      master:
+        url: jdbc:mysql://${DB_HOST:mysql-test}:${DB_PORT:3306}/${DB_NAME:SpinTale_test}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+        username: ${DB_USERNAME:root}
+        password: ${DB_PASSWORD:}
+      slave:
+        enabled: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis-test}
+      port: ${REDIS_PORT:6379}
+      database: 2
+      password: ${REDIS_PASSWORD:}
+
+logging:
+  level:
+    com.spintale: info
+    org.springframework: warn
+  file:
+    name: logs/spintale-test.log
+
+token:
+  secret: ${TOKEN_SECRET:}
+  expireTime: 120
+
+spintale:
+  profile: /home/spintale/uploadPath_test
+  captchaEnabled: true
+  addressEnabled: true
+  weatherEnabled: false
+  eventEnabled: false
+
+spintale.ai:
+  enabled: true
+  provider: openai-compatible
+  model: deepseek-v4-flash
+  openai-compatible:
+    enabled: true
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: https://api.deepseek.com/v1
+    model-name: deepseek-v4-flash
+  telemetry:
+    enabled: true
+    logging:
+      enabled: true
+      log-payload: true
+  resilience:
+    circuit-breaker:
+      enabled: true
+      failure-rate-threshold: 50

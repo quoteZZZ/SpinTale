@@ -43,11 +43,16 @@ public class ToolRegistry {
     private final Map<String, Set<String>> toolPermissions = new ConcurrentHashMap<>();
 
     public ToolRegistry() {
-        this.executorService = Executors.newCachedThreadPool(r -> {
-            Thread t = new Thread(r, "tool-executor");
-            t.setDaemon(true);
-            return t;
-        });
+        this.executorService = new ThreadPoolExecutor(
+                10, 50, 60L, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(500),
+                r -> {
+                    Thread t = new Thread(r, "tool-executor");
+                    t.setDaemon(true);
+                    return t;
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
     }
 
     @Autowired
@@ -168,7 +173,20 @@ public class ToolRegistry {
     }
     
     private void validateParameters(Map<String, Object> args, String schema) {
-        // TODO: 实现JSON Schema校验
+        if (schema == null || schema.isBlank()) {
+            return;
+        }
+        
+        try {
+            JSONSchema jsonSchema = JSONSchema.parse(schema);
+            String jsonArgs = JSON.toJSONString(args);
+            if (!jsonSchema.validate(jsonArgs)) {
+                throw new IllegalArgumentException("Parameters do not match JSON Schema");
+            }
+        } catch (Exception e) {
+            log.warn("JSON Schema validation failed: schema={}, args={}", schema, args, e);
+            throw new IllegalArgumentException("Parameter validation failed: " + e.getMessage(), e);
+        }
     }
     
     public void grantPermission(String toolName, String userId) {

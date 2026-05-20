@@ -1,8 +1,10 @@
 package com.spintale.ai.api.provider.ollama;
 
 import com.spintale.ai.api.provider.langchain4j.LangChain4jChatModelAdapter;
+import com.spintale.ai.api.provider.langchain4j.LangChain4jStreamingChatModelAdapter;
 import com.spintale.ai.core.constant.AiConstants;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.Builder;
 
 /**
@@ -31,16 +33,14 @@ public class OllamaProvider {
      * @return ChatModel instance
      */
     public com.spintale.ai.core.spi.ChatModel createChatModel() {
-        // Ollama uses OpenAI-compatible API
         OpenAiChatModel lcModel = OpenAiChatModel.builder()
-            .apiKey("ollama")  // Ollama doesn't require API key
+            .apiKey("ollama")
             .baseUrl(baseUrl)
             .modelName(modelName)
             .temperature(temperature)
             .maxTokens(maxTokens)
             .build();
 
-        // Wrap with SpinTale adapter
         return new LangChain4jChatModelAdapter(
             AiConstants.PROVIDER_OLLAMA,
             modelName,
@@ -49,13 +49,24 @@ public class OllamaProvider {
     }
 
     /**
-     * Create a ChatModel adapter with streaming support.
-     * Note: Streaming support requires LangChain4j 1.14+.
+     * Create a StreamingChatModel adapter for Ollama.
+     * LangChain4j 1.13.1+ supports OpenAiStreamingChatModel for Ollama.
      *
-     * @return ChatModel instance (streaming not yet supported in current version)
+     * @return StreamingChatModel instance
      */
-    public com.spintale.ai.core.spi.ChatModel createStreamingChatModel() {
-        // TODO: Add streaming support when available
-        return createChatModel();
+    public com.spintale.ai.core.spi.StreamingChatModel createStreamingChatModel() {
+        OpenAiStreamingChatModel streamingModel = OpenAiStreamingChatModel.builder()
+            .apiKey("ollama")
+            .baseUrl(baseUrl)
+            .modelName(modelName)
+            .temperature(temperature)
+            .maxTokens(maxTokens)
+            .build();
+
+        return new LangChain4jStreamingChatModelAdapter(
+            AiConstants.PROVIDER_OLLAMA,
+            modelName,
+            streamingModel
+        );
     }
 }

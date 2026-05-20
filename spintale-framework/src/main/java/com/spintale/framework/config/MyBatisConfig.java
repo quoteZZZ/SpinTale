@@ -10,6 +10,8 @@ import org.apache.ibatis.io.VFS;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.boot.autoconfigure.SpringBootVFS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,6 +34,8 @@ import com.spintale.common.utils.StringUtils;
 @Configuration
 public class MyBatisConfig
 {
+    private static final Logger log = LoggerFactory.getLogger(MyBatisConfig.class);
+    
     @Autowired
     private Environment env;
 
@@ -64,7 +68,7 @@ public class MyBatisConfig
                             }
                             catch (ClassNotFoundException e)
                             {
-                                e.printStackTrace();
+                                log.warn("Class not found for type alias: {}", metadataReader.getClassMetadata().getClassName(), e);
                             }
                         }
                     }
@@ -86,7 +90,8 @@ public class MyBatisConfig
         }
         catch (IOException e)
         {
-            e.printStackTrace();
+            log.error("Failed to resolve type aliases package: {}", typeAliasesPackage, e);
+            throw new RuntimeException("Failed to resolve type aliases package", e);
         }
         return typeAliasesPackage;
     }
