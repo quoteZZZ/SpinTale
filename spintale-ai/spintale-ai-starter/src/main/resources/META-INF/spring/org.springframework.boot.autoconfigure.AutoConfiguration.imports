@@ -1,0 +1,11 @@
+com.spintale.ai.infrastructure.autoconfig.core.CoreAutoConfig
+com.spintale.ai.infrastructure.autoconfig.agent.AgentAutoConfig
+com.spintale.ai.infrastructure.autoconfig.capability.CapabilityAutoConfig
+com.spintale.ai.infrastructure.autoconfig.generation.GenerationAutoConfig
+com.spintale.ai.infrastructure.autoconfig.provider.OpenAiAutoConfig
+com.spintale.ai.infrastructure.autoconfig.provider.OllamaAutoConfig
+com.spintale.ai.infrastructure.autoconfig.retrieval.RetrievalAutoConfig
+com.spintale.ai.infrastructure.autoconfig.retrieval.MilvusAutoConfig
+com.spintale.ai.infrastructure.autoconfig.support.CaffeineCacheConfig
+com.spintale.ai.infrastructure.autoconfig.support.Resilience4jConfig
+com.spintale.ai.infrastructure.autoconfig.workflow.TemporalAutoConfig
