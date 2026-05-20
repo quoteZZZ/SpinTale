@@ -22,7 +22,7 @@ public class OpenAiAutoConfig
 {
     private final AiProperties properties;
 
-    public OpenAiProviderAutoConfig(AiProperties properties)
+    public OpenAiAutoConfig(AiProperties properties)
     {
         this.properties = properties;
     }

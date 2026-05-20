@@ -7,8 +7,8 @@ import java.util.List;
 
 import com.spintale.ai.core.model.ChatRequest;
 import com.spintale.ai.core.model.ChatResponse;
-import com.spintale.ai.core.pipeline.AiChatInterceptor;
-import com.spintale.ai.core.pipeline.PipelineAttributes;
+import com.spintale.ai.api.pipeline.AiChatInterceptor;
+import com.spintale.ai.api.pipeline.PipelineAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

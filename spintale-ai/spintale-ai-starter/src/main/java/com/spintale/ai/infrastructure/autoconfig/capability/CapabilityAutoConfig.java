@@ -12,21 +12,21 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.spintale.ai.capability.advisor.Advisor;
-import com.spintale.ai.capability.advisor.AdvisorInterceptor;
-import com.spintale.ai.capability.advisor.HallucinationAdvisor;
-import com.spintale.ai.capability.advisor.MemoryAdvisor;
-import com.spintale.ai.capability.advisor.ObservabilityAdvisor;
-import com.spintale.ai.capability.advisor.RagAdvisor;
-import com.spintale.ai.capability.advisor.SafetyAdvisor;
-import com.spintale.ai.capability.advisor.SemanticCacheAdvisor;
-import com.spintale.ai.capability.memory.api.ConversationManager;
-import com.spintale.ai.capability.memory.api.ConversationCompressor;
-import com.spintale.ai.capability.memory.impl.InMemoryConversationManager;
-import com.spintale.ai.capability.memory.impl.InMemoryLongTermMemoryManager;
-import com.spintale.ai.capability.memory.LongTermMemory;
-import com.spintale.ai.capability.memory.api.LongTermMemoryManager;
-import com.spintale.ai.capability.observability.CostMonitor;
+import com.spintale.ai.api.advisor.Advisor;
+import com.spintale.ai.api.advisor.AdvisorInterceptor;
+import com.spintale.ai.api.advisor.HallucinationAdvisor;
+import com.spintale.ai.api.advisor.MemoryAdvisor;
+import com.spintale.ai.api.advisor.ObservabilityAdvisor;
+import com.spintale.ai.api.advisor.RagAdvisor;
+import com.spintale.ai.api.advisor.SafetyAdvisor;
+import com.spintale.ai.api.advisor.SemanticCacheAdvisor;
+import com.spintale.ai.agent.memory.api.ConversationManager;
+import com.spintale.ai.agent.memory.api.ConversationCompressor;
+import com.spintale.ai.agent.memory.impl.InMemoryConversationManager;
+import com.spintale.ai.agent.memory.impl.InMemoryLongTermMemoryManager;
+import com.spintale.ai.agent.memory.LongTermMemory;
+import com.spintale.ai.agent.memory.api.LongTermMemoryManager;
+import com.spintale.ai.core.metrics.CostMonitor;
 import com.spintale.ai.infrastructure.properties.AiProperties;
 import com.spintale.ai.retrieval.vector.RetrievalService;
 

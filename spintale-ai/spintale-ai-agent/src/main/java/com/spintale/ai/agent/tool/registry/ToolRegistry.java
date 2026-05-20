@@ -1,13 +1,17 @@
 package com.spintale.ai.agent.tool.registry;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONSchema;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 /**
@@ -26,14 +30,29 @@ public class ToolRegistry {
 
     private static final Logger log = LoggerFactory.getLogger(ToolRegistry.class);
 
-    /** 注册的工具定义 */
     private final Map<String, RegisteredTool> tools = new ConcurrentHashMap<>();
+    
+    private final ExecutorService executorService;
+    
+    @Value("${spintale.ai.tool.default-timeout-ms:30000}")
+    private long defaultTimeoutMs = 30000;
+    
+    @Value("${spintale.ai.tool.enabled-permission-check:false}")
+    private boolean permissionCheckEnabled = false;
+    
+    private final Map<String, Set<String>> toolPermissions = new ConcurrentHashMap<>();
 
     public ToolRegistry() {
+        this.executorService = Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, "tool-executor");
+            t.setDaemon(true);
+            return t;
+        });
     }
 
     @Autowired
     public ToolRegistry(List<AiTool> aiTools) {
+        this();
         if (aiTools != null) {
             aiTools.stream()
                     .filter(tool -> tool != null && tool.isEnabled())
@@ -84,26 +103,90 @@ public class ToolRegistry {
         return tools.get(name);
     }
 
-    /**
-     * 执行工具
-     */
     public ToolExecutionResult execute(String name, Map<String, Object> args) {
+        return execute(name, args, Duration.ofMillis(defaultTimeoutMs), null);
+    }
+    
+    public ToolExecutionResult execute(String name, Map<String, Object> args, Duration timeout) {
+        return execute(name, args, timeout, null);
+    }
+    
+    public ToolExecutionResult execute(String name, Map<String, Object> args, String userId) {
+        return execute(name, args, Duration.ofMillis(defaultTimeoutMs), userId);
+    }
+    
+    public ToolExecutionResult execute(String name, Map<String, Object> args, Duration timeout, String userId) {
         RegisteredTool tool = tools.get(name);
         if (tool == null) {
             return ToolExecutionResult.error("Tool not found: " + name);
         }
-
+        
+        if (permissionCheckEnabled && userId != null) {
+            if (!hasPermission(name, userId)) {
+                log.warn("Permission denied: user={}, tool={}", userId, name);
+                return ToolExecutionResult.error("Permission denied for tool: " + name);
+            }
+        }
+        
+        if (tool.paramSchema() != null && args != null) {
+            try {
+                validateParameters(args, tool.paramSchema());
+            } catch (Exception e) {
+                return ToolExecutionResult.error("Parameter validation failed: " + e.getMessage());
+            }
+        }
+        
         long startTime = System.currentTimeMillis();
         try {
-            String result = tool.executor().apply(args != null ? args : new HashMap<>());
+            Map<String, Object> finalArgs = args != null ? args : new HashMap<>();
+            
+            CompletableFuture<String> future = CompletableFuture.supplyAsync(
+                    () -> tool.executor().apply(finalArgs),
+                    executorService
+            );
+            
+            String result = future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Tool executed: name={}, duration={}ms", name, duration);
+            
+            log.info("Tool executed: name={}, duration={}ms, user={}", name, duration, userId);
             return ToolExecutionResult.success(result, duration);
+            
+        } catch (TimeoutException e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("Tool execution timeout: name={}, timeout={}ms", name, timeout.toMillis());
+            return ToolExecutionResult.error("Execution timeout after " + timeout.toMillis() + "ms", duration);
+        } catch (ExecutionException e) {
+            long duration = System.currentTimeMillis() - startTime;
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            log.error("Tool execution failed: name={}, duration={}ms", name, duration, cause);
+            return ToolExecutionResult.error(cause.getMessage(), duration);
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("Tool execution failed: name={}, duration={}ms", name, duration, e);
             return ToolExecutionResult.error(e.getMessage(), duration);
         }
+    }
+    
+    private void validateParameters(Map<String, Object> args, String schema) {
+        // TODO: 实现JSON Schema校验
+    }
+    
+    public void grantPermission(String toolName, String userId) {
+        toolPermissions.computeIfAbsent(toolName, k -> ConcurrentHashMap.newKeySet()).add(userId);
+        log.debug("Granted permission: tool={}, user={}", toolName, userId);
+    }
+    
+    public void revokePermission(String toolName, String userId) {
+        Set<String> users = toolPermissions.get(toolName);
+        if (users != null) {
+            users.remove(userId);
+        }
+        log.debug("Revoked permission: tool={}, user={}", toolName, userId);
+    }
+    
+    public boolean hasPermission(String toolName, String userId) {
+        Set<String> allowedUsers = toolPermissions.get(toolName);
+        return allowedUsers == null || allowedUsers.contains(userId);
     }
 
     /**

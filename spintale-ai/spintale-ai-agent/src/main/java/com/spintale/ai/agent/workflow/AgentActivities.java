@@ -6,7 +6,7 @@ import com.spintale.ai.generation.model.GenerationRequest;
 import com.spintale.ai.generation.model.GenerationResponse;
 import com.spintale.ai.retrieval.vector.RetrievalResult;
 import com.spintale.ai.agent.react.api.AgentResult;
-import com.spintale.ai.capability.hallucination.HallucinationReport;
+import com.spintale.ai.core.metrics.hallucination.HallucinationReport;
 import java.util.List;
 
 /**

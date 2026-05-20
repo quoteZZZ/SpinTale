@@ -13,8 +13,10 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.DisposableBean;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +44,7 @@ import com.spintale.ai.agent.react.api.SimpleAgentResult;
  * 5. 增加循环检测（检测重复工具调用模式）
  * 6. 使用 @CircuitBreaker 注解接入 Resilience4j
  */
-public class ReActAgent implements AgentService {
+public class ReActAgent implements AgentService, DisposableBean {
 
     private static final Logger log = LoggerFactory.getLogger(ReActAgent.class);
 
@@ -488,5 +490,26 @@ public class ReActAgent implements AgentService {
     public ReActAgent setLoopDetectionThreshold(int threshold) {
         this.loopDetectionThreshold = threshold;
         return this;
+    }
+
+    // ==================== 生命周期管理 ====================
+
+    @Override
+    public void destroy() throws Exception {
+        log.info("Shutting down ReActAgent tool executor");
+        TOOL_EXECUTOR.shutdown();
+        if (!TOOL_EXECUTOR.awaitTermination(5, TimeUnit.SECONDS)) {
+            TOOL_EXECUTOR.shutdownNow();
+            log.warn("Tool executor forced shutdown");
+        }
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        try {
+            destroy();
+        } catch (Exception e) {
+            log.error("Error during ReActAgent cleanup", e);
+        }
     }
 }

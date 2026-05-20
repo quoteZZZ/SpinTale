@@ -8,6 +8,14 @@ import java.util.Map;
  */
 public class AdvisorContext {
 
+    public static final String ORIGINAL_QUERY = "originalQuery";
+    public static final String CACHE_HIT = "cacheHit";
+    public static final String CACHE_RESPONSE = "cacheResponse";
+    public static final String HALLUCINATION_RESULT = "hallucinationResult";
+    public static final String RETRIEVED_DOCUMENTS = "retrievedDocuments";
+    public static final String SAFETY_CHECK_PASSED = "safetyCheckPassed";
+    public static final String RETRIEVED_MEMORIES = "retrievedMemories";
+
     private final Map<String, Object> attributes = new HashMap<>();
     private String providerId;
     private String model;
@@ -50,6 +58,19 @@ public class AdvisorContext {
     public AdvisorContext setAttribute(String key, Object value) {
         attributes.put(key, value);
         return this;
+    }
+
+    public void put(String key, Object value) {
+        attributes.put(key, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T get(String key, Class<T> type) {
+        Object value = attributes.get(key);
+        if (value != null && type.isInstance(value)) {
+            return (T) value;
+        }
+        return null;
     }
 
     public Map<String, Object> getAttributes() {

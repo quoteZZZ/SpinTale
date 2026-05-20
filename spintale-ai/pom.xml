@@ -13,7 +13,7 @@
     <artifactId>spintale-ai</artifactId>
     <packaging>pom</packaging>
     <name>SpinTale AI Module (Parent)</name>
-    <description>Provider-agnostic AI module with modular architecture.</description>
+    <description>Provider-agnostic AI module with modular architecture based on LangChain4j</description>
 
     <modules>
         <module>spintale-ai-core</module>
@@ -24,14 +24,4 @@
         <module>spintale-ai-starter</module>
     </modules>
 
-    <dependencyManagement>
-        <dependencies>
-            <!-- Import parent dependencies -->
-            <dependency>
-                <groupId>com.spintale</groupId>
-                <artifactId>spintale-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 </project>

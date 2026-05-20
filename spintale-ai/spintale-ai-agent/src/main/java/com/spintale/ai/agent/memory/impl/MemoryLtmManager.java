@@ -22,7 +22,7 @@ import com.spintale.ai.agent.memory.api.LongTermMemoryManager;
  */
 public class MemoryLtmManager implements LongTermMemoryManager {
     
-    private static final Logger log = LoggerFactory.getLogger(InMemoryLongTermMemoryManager.class);
+    private static final Logger log = LoggerFactory.getLogger(MemoryLtmManager.class);
     
     // 记忆存储（生产环境应使用数据库）
     private final Map<String, LongTermMemory> memoryStore = new ConcurrentHashMap<>();
@@ -43,7 +43,7 @@ public class MemoryLtmManager implements LongTermMemoryManager {
     // 最大短期记忆数量（超过后触发压缩）
     private static final int MAX_SHORT_TERM_MEMORIES = 50;
     
-    public InMemoryLongTermMemoryManager(
+    public MemoryLtmManager(
             EmbeddingStore<LongTermMemory> embeddingStore,
             EmbeddingModel embeddingModel,
             ChatModel chatModel) {

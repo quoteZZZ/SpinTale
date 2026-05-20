@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import com.spintale.ai.core.model.ChatRequest;
 import com.spintale.ai.core.model.ChatResponse;
-import com.spintale.ai.core.api.AiChatService;
+import com.spintale.ai.core.service.AiChatService;
 
 /**
  * Text generation facade backed by the unified AI gateway.

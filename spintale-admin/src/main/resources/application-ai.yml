@@ -1,0 +1,231 @@
+# ============================================================================
+# SpinTale AI 模块独立配置文件
+# 说明：所有AI相关配置统一管理，支持环境变量注入
+# ============================================================================
+
+spintale:
+  ai:
+    # AI功能总开关
+    enabled: ${SPINTALE_AI_ENABLED:true}
+    
+    # 默认提供商（可选值：openai、ollama、azure、openai-compatible）
+    provider: openai-compatible
+    
+    # 默认模型
+    model: deepseek-v4-flash
+    
+    # ============================================================================
+    # OpenAI Compatible Provider (支持DeepSeek、通义千问等兼容OpenAI API的服务)
+    # ============================================================================
+    openai-compatible:
+      enabled: true
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: https://api.deepseek.com/v1
+      model-name: deepseek-v4-flash
+      temperature: 0.7
+      max-tokens: 2000
+      timeout: 60000
+      # 连接池配置
+      connection-pool:
+        max-connections: 100
+        connection-timeout: 10000
+        read-timeout: 60000
+    
+    # ============================================================================
+    # OpenAI Provider
+    # ============================================================================
+    openai:
+      enabled: false
+      api-key: ${OPENAI_API_KEY:}
+      base-url: https://api.openai.com/v1
+      model-name: gpt-4-turbo-preview
+      temperature: 0.7
+      max-tokens: 2000
+      timeout: 60000
+    
+    # ============================================================================
+    # Ollama Provider (本地模型)
+    # ============================================================================
+    ollama:
+      enabled: false
+      base-url: http://localhost:11434
+      model-name: llama2
+      temperature: 0.7
+      max-tokens: 2000
+      timeout: 120000
+    
+    # ============================================================================
+    # Azure OpenAI Provider
+    # ============================================================================
+    azure:
+      enabled: false
+      api-key: ${AZURE_OPENAI_API_KEY:}
+      endpoint: ${AZURE_OPENAI_ENDPOINT:}
+      deployment-name: ${AZURE_OPENAI_DEPLOYMENT:}
+      temperature: 0.7
+      max-tokens: 2000
+      timeout: 60000
+    
+    # ============================================================================
+    # 记忆管理配置
+    # ============================================================================
+    memory:
+      # 会话记忆配置
+      session:
+        enabled: true
+        # 会话过期时间（分钟）
+        expire-minutes: 30
+        # 最大会话数
+        max-size: 10000
+        # 记忆窗口大小（最近N条消息）
+        window-size: 10
+      
+      # 长期记忆配置
+      long-term:
+        enabled: true
+        # 最大长期记忆数
+        max-memories: 100
+        # 记忆重要性阈值
+        importance-threshold: 0.5
+      
+      # 记忆压缩配置
+      compression:
+        enabled: true
+        # 压缩后的最大token数
+        max-tokens: 4000
+        # 压缩策略（summarize、extract、semantic）
+        strategy: summarize
+    
+    # ============================================================================
+    # RAG检索配置
+    # ============================================================================
+    rag:
+      enabled: true
+      # 向量存储类型（milvus、memory）
+      vector-store: milvus
+      # 文档分块配置
+      chunking:
+        # 分块大小（字符数）
+        chunk-size: 500
+        # 分块重叠大小
+        overlap-size: 50
+        # 分块策略（fixed、semantic、recursive）
+        strategy: recursive
+      # 检索配置
+      retrieval:
+        # 默认检索数量
+        default-top-k: 5
+        # 最小相似度阈值
+        min-score: 0.5
+        # 重排序开关
+        rerank-enabled: false
+    
+    # ============================================================================
+    # Agent编排配置
+    # ============================================================================
+    agent:
+      enabled: true
+      # 最大迭代次数
+      max-iterations: 10
+      # 最大执行时间（秒）
+      timeout-seconds: 300
+      # ReAct模式配置
+      react:
+        enabled: true
+        # 思考最大长度
+        max-thought-length: 1000
+    
+    # ============================================================================
+    # 工具执行配置
+    # ============================================================================
+    tools:
+      enabled: true
+      # 默认超时时间（毫秒）
+      default-timeout-ms: 30000
+      # 最大并发执行数
+      max-concurrent: 5
+      # 内置工具开关
+      builtin:
+        web-search: false
+        code-execution: false
+        file-system: false
+    
+    # ============================================================================
+    # 向量数据库配置
+    # ============================================================================
+    vector:
+      milvus:
+        enabled: false
+        host: localhost
+        port: 19530
+        database: default
+        collection: spintale_embeddings
+        # 向量维度
+        dimension: 1536
+        # 索引类型
+        index-type: IVF_FLAT
+        metric-type: COSINE
+    
+    # ============================================================================
+    # 可观测性配置
+    # ============================================================================
+    telemetry:
+      enabled: false
+      service-name: spintale-ai
+      # OpenTelemetry配置
+      otlp:
+        enabled: false
+        endpoint: http://localhost:4317
+      # 日志配置
+      logging:
+        enabled: true
+        # 记录请求响应
+        log-payload: true
+        # 敏感字段脱敏
+        mask-sensitive: true
+    
+    # ============================================================================
+    # 弹性设计配置（Resilience4j）
+    # ============================================================================
+    resilience:
+      # 熔断器配置
+      circuit-breaker:
+        enabled: true
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 100
+        slow-call-duration-threshold: 60s
+        permitted-number-of-calls-in-half-open-state: 10
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 100
+        minimum-number-of-calls: 20
+        wait-duration-in-open-state: 60s
+      
+      # 限流器配置
+      rate-limiter:
+        enabled: true
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 5s
+      
+      # 重试配置
+      retry:
+        enabled: true
+        max-attempts: 3
+        wait-duration: 1s
+        exponential-backoff-multiplier: 2
+    
+    # ============================================================================
+    # 安全配置
+    # ============================================================================
+    security:
+      # API Key加密开关
+      encrypt-api-key: false
+      # 允许的IP白名单（为空表示不限制）
+      ip-whitelist: []
+      # 用户配额限制
+      quota:
+        enabled: false
+        # 每日Token限制
+        daily-token-limit: 100000
+        # 每月Token限制
+        monthly-token-limit: 1000000

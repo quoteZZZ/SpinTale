@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory;
 
 import com.spintale.ai.core.model.ChatRequest;
 import com.spintale.ai.core.model.ChatResponse;
-import com.spintale.ai.core.api.AiChatService;
-import com.spintale.ai.infrastructure.adapter.LangChain4jAdapter;
+import com.spintale.ai.core.service.AiChatService;
+import com.spintale.ai.api.provider.langchain4j.LangChain4jAdapter;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;

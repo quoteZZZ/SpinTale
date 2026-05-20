@@ -52,6 +52,41 @@ public class RoutingChatService implements AiChatService {
     public void streamChat(ChatRequest request, StreamHandler handler) {
         AiModelProvider provider = providerRegistry.select(null);
         AiChatService service = provider.getChatService();
-        service.streamChat(request, handler);
+        
+        ChatRequest processedRequest = request;
+        for (AiChatInterceptor interceptor : interceptors) {
+            processedRequest = interceptor.beforeChat(processedRequest);
+        }
+        
+        StreamHandler wrappedHandler = new StreamHandler() {
+            @Override
+            public void onStart() {
+                handler.onStart();
+            }
+            
+            @Override
+            public void onNext(String chunk) {
+                handler.onNext(chunk);
+            }
+            
+            @Override
+            public void onComplete(ChatResponse response) {
+                ChatResponse processedResponse = response;
+                for (int i = interceptors.size() - 1; i >= 0; i--) {
+                    processedResponse = interceptors.get(i).afterChat(processedRequest, processedResponse);
+                }
+                handler.onComplete(processedResponse);
+            }
+            
+            @Override
+            public void onError(Throwable error) {
+                for (AiChatInterceptor interceptor : interceptors) {
+                    interceptor.onError(processedRequest, error);
+                }
+                handler.onError(error);
+            }
+        };
+        
+        service.streamChat(processedRequest, wrappedHandler);
     }
 }

@@ -3,11 +3,19 @@ package com.spintale.ai.core.provider;
 import com.spintale.ai.core.service.AiChatService;
 import com.spintale.ai.core.spi.ModelProvider;
 
+import java.util.Map;
+
 /**
  * AI model provider interface for Spring integration.
  * Bridges ModelProvider with Spring's dependency injection.
  */
 public interface AiModelProvider {
+
+    enum Type {
+        CHAT,
+        EMBEDDING,
+        MULTIMODAL
+    }
 
     /**
      * Get the provider ID.
@@ -15,6 +23,15 @@ public interface AiModelProvider {
      * @return provider ID
      */
     String getProviderId();
+
+    /**
+     * Get the provider type.
+     *
+     * @return provider type
+     */
+    default Type getType() {
+        return Type.CHAT;
+    }
 
     /**
      * Get the underlying model provider.
@@ -29,6 +46,15 @@ public interface AiModelProvider {
      * @return chat service
      */
     AiChatService getChatService();
+
+    /**
+     * Get provider metadata.
+     *
+     * @return metadata map
+     */
+    default Map<String, Object> getMetadata() {
+        return Map.of();
+    }
 
     /**
      * Check if this provider is enabled.

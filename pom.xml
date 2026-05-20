@@ -27,7 +27,6 @@
         <commons.io.version>2.20.0</commons.io.version>
         <caffeine.version>3.2.2</caffeine.version>
         <poi.version>5.5.1</poi.version>
-        <velocity.version>2.4</velocity.version>
         <jjwt.version>0.12.6</jjwt.version>
         <jakarta.bind-api.version>4.0.2</jakarta.bind-api.version>
         <springdoc.version>3.0.2</springdoc.version>
@@ -44,6 +43,15 @@
         <resilience4j.version>2.2.0</resilience4j.version>
         <!-- Lombok -->
         <lombok.version>1.18.36</lombok.version>
+        <!-- Apache Commons Pool2 -->
+        <commons-pool2.version>2.12.0</commons-pool2.version>
+        <!-- Jackson Datatype JSR310 -->
+        <jackson-datatype-jsr310.version>2.17.0</jackson-datatype-jsr310.version>
+        <!-- Hutool -->
+        <hutool.version>5.8.26</hutool.version>
+        <!-- OpenTelemetry -->
+        <opentelemetry.version>1.36.0</opentelemetry.version>
+        <opentelemetry-instrumentation.version>2.3.0</opentelemetry-instrumentation.version>
     </properties>
 
     <!-- 依赖声明 -->
@@ -128,13 +136,6 @@
                 <version>${poi.version}</version>
             </dependency>
 
-            <!-- velocity代码生成使用模板 -->
-            <dependency>
-                <groupId>org.apache.velocity</groupId>
-                <artifactId>velocity-engine-core</artifactId>
-                <version>${velocity.version}</version>
-            </dependency>
-
             <!-- 阿里JSON解析器 -->
             <dependency>
                 <groupId>com.alibaba.fastjson2</groupId>
@@ -214,26 +215,76 @@
                 <artifactId>resilience4j-spring-boot3</artifactId>
                 <version>${resilience4j.version}</version>
             </dependency>
+            
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-circuitbreaker</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-ratelimiter</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-retry</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+
+            <!-- Apache Commons Pool2 -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-pool2</artifactId>
+                <version>${commons-pool2.version}</version>
+            </dependency>
+
+            <!-- Jackson Datatype JSR310 -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${jackson-datatype-jsr310.version}</version>
+            </dependency>
+
+            <!-- Hutool -->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
+
+            <!-- OpenTelemetry -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-api</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-exporter-otlp</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-spring-boot-starter</artifactId>
+                <version>${opentelemetry-instrumentation.version}-alpha</version>
+            </dependency>
 
             <!-- Lombok -->
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
-            </dependency>
-
-            <!-- 定时任务-->
-            <dependency>
-                <groupId>com.spintale</groupId>
-                <artifactId>spintale-quartz</artifactId>
-                <version>${spintale.version}</version>
-            </dependency>
-
-            <!-- 代码生成-->
-            <dependency>
-                <groupId>com.spintale</groupId>
-                <artifactId>spintale-generator</artifactId>
-                <version>${spintale.version}</version>
             </dependency>
 
             <!-- 核心模块-->
@@ -309,8 +360,6 @@
         <module>spintale-framework</module>
         <module>spintale-ai</module>
         <module>spintale-system</module>
-        <module>spintale-quartz</module>
-        <module>spintale-generator</module>
         <module>spintale-common</module>
     </modules>
     <packaging>pom</packaging>

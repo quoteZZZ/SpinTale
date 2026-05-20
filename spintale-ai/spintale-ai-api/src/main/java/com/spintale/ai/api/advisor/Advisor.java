@@ -43,4 +43,7 @@ public interface Advisor {
     default AdvisorResponse adviseResponse(AdvisorResponse response, AdvisorContext context) {
         return response;
     }
+    
+    default void onError(AdvisorRequest request, AdvisorContext context, Throwable error) {
+    }
 }

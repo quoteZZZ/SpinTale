@@ -1,6 +1,6 @@
 package com.spintale.ai.api.advisor;
 
-import com.spintale.ai.capability.observability.CostMonitor;
+import com.spintale.ai.core.metrics.CostMonitor;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -86,7 +86,7 @@ public class ObservabilityAdvisor implements Advisor {
 
     @Override
     public int getOrder() {
-        return 100; // 日志和指标在安全检查之�?
+        return AdvisorOrder.OBSERVABILITY;�?
     }
 
     @Override

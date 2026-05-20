@@ -1,9 +1,9 @@
 package com.spintale.ai.api.advisor;
 
-import com.spintale.ai.capability.advisor.Advisor;
-import com.spintale.ai.capability.advisor.AdvisorContext;
-import com.spintale.ai.capability.advisor.AdvisorRequest;
-import com.spintale.ai.capability.advisor.AdvisorResponse;
+import com.spintale.ai.api.advisor.Advisor;
+import com.spintale.ai.api.advisor.AdvisorContext;
+import com.spintale.ai.api.advisor.AdvisorRequest;
+import com.spintale.ai.api.advisor.AdvisorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,7 @@ public class HallucinationAdvisor implements Advisor {
 
     @Override
     public int getOrder() {
-        return 600; // �?LLM 调用之后处理响应
+        return AdvisorOrder.HALLUCINATION;�?LLM 调用之后处理响应
     }
 
     @Override

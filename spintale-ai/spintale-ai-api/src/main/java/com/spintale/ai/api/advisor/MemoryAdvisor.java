@@ -1,16 +1,16 @@
 package com.spintale.ai.api.advisor;
 
 import com.spintale.ai.core.model.ChatMessage;
-import com.spintale.ai.capability.advisor.Advisor;
-import com.spintale.ai.capability.advisor.AdvisorContext;
-import com.spintale.ai.capability.advisor.AdvisorRequest;
-import com.spintale.ai.capability.advisor.AdvisorResponse;
-import com.spintale.ai.capability.memory.LongTermMemory;
-import com.spintale.ai.capability.memory.ConversationSession;
-import com.spintale.ai.capability.memory.ConversationMessage;
-import com.spintale.ai.capability.memory.api.ConversationManager;
-import com.spintale.ai.capability.memory.api.LongTermMemoryManager;
-import com.spintale.ai.capability.memory.api.ConversationCompressor;
+import com.spintale.ai.api.advisor.Advisor;
+import com.spintale.ai.api.advisor.AdvisorContext;
+import com.spintale.ai.api.advisor.AdvisorRequest;
+import com.spintale.ai.api.advisor.AdvisorResponse;
+import com.spintale.ai.agent.memory.LongTermMemory;
+import com.spintale.ai.agent.memory.ConversationSession;
+import com.spintale.ai.agent.memory.ConversationMessage;
+import com.spintale.ai.agent.memory.api.ConversationManager;
+import com.spintale.ai.agent.memory.api.LongTermMemoryManager;
+import com.spintale.ai.agent.memory.api.ConversationCompressor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -85,7 +85,7 @@ public class MemoryAdvisor implements Advisor {
 
     @Override
     public int getOrder() {
-        return 300; // 在安全检查和缓存之后
+        return AdvisorOrder.MEMORY;
     }
 
     @Override

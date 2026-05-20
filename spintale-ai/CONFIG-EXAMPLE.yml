@@ -1,0 +1,207 @@
+# SpinTale AI Module Configuration Example
+# Copy this file to your application.yml and customize as needed
+
+spintale:
+  ai:
+    # ==================== Core Settings ====================
+    # Enable AI module
+    enabled: true
+    # Default provider: openai, ollama, azure, anthropic, openai-compatible
+    provider: openai
+    # Default model
+    model: gpt-4-turbo-preview
+
+    # ==================== Provider Configurations ====================
+    # OpenAI Configuration
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: https://api.openai.com/v1
+      timeout: 60000
+
+    # OpenAI Compatible Configuration (DeepSeek, Moonshot, etc.)
+    openai-compatible:
+      enabled: false
+      api-key: ${COMPATIBLE_API_KEY:}
+      base-url: https://api.deepseek.com/v1
+      model-name: deepseek-chat
+      temperature: 0.7
+      max-tokens: 4096
+      timeout: 60000
+
+    # Azure OpenAI Configuration
+    azure:
+      api-key: ${AZURE_OPENAI_API_KEY:}
+      endpoint: ${AZURE_OPENAI_ENDPOINT:}
+      deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4}
+      api-version: "2024-02-15-preview"
+
+    # Ollama Configuration
+    ollama:
+      base-url: http://localhost:11434
+      model: llama3.1
+
+    # Anthropic Configuration
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      base-url: https://api.anthropic.com
+      model: claude-3-sonnet-20240229
+
+    # Local Model Configuration
+    local-model:
+      enabled: false
+      provider: ollama
+      endpoint: http://localhost:11434
+      model-name: qwen2.5:7b
+      temperature: 0.7
+      timeout-seconds: 30
+
+    # Model Routing Configuration
+    routing:
+      enabled: false
+      complexity-threshold: 0.6
+
+    # ==================== RAG Configuration ====================
+    rag:
+      enabled: false
+      max-retrieved-docs: 5
+      min-score: 0.5
+      query-rewriting-enabled: false
+
+    # ==================== Context & Memory ====================
+    context:
+      max-messages: 20
+      memory-retrieval-threshold: 0.6
+      max-retrieved-memories: 5
+      long-term-memory-enabled: true
+
+    # ==================== Capability Settings ====================
+    # Hallucination Detection
+    hallucination-detection:
+      enabled: true
+      threshold: 0.5
+      action: WARN  # WARN, REGENERATE, BLOCK
+
+    # Safety Guardrails
+    safety:
+      enabled: true
+      level: MODERATE  # STRICT, MODERATE, RELAXED
+
+    # Semantic Cache
+    semantic-cache:
+      enabled: true
+      similarity-threshold: 0.85
+      ttl-hours: 24
+
+    # Experimental Features
+    experiment:
+      enabled: false
+
+    # ==================== Agent Settings ====================
+    agent:
+      # ReAct Agent
+      react:
+        enabled: true
+        max-iterations: 10
+        tool-timeout-ms: 30000
+        loop-threshold: 3
+      # Multi-Agent Coordination
+      coordination:
+        enabled: false
+
+    # ==================== Workflow Settings ====================
+    workflow:
+      enabled: false
+      temporal:
+        enabled: false
+        namespace: default
+
+    # ==================== Tool Settings ====================
+    tools:
+      enabled: true
+      default-timeout-ms: 30000
+      permission-check-enabled: false
+      builtin:
+        weather: true
+        calculator: true
+        web-search: false
+
+    # ==================== MCP Settings ====================
+    mcp:
+      enabled: false
+      servers: []
+
+    # ==================== Telemetry Settings ====================
+    telemetry:
+      enabled: true
+      service-name: spintale-ai
+      otlp:
+        endpoint: http://localhost:4317
+        enabled: true
+
+    # ==================== Memory Settings ====================
+    memory:
+      # Session Management
+      session:
+        expire-minutes: 30
+        max-size: 10000
+      # Conversation Compression
+      compression:
+        enabled: true
+        max-tokens: 4000
+        summary-threshold: 6
+
+    # ==================== Vector Store Settings ====================
+    vectorstore:
+      # Milvus Configuration
+      milvus:
+        enabled: false
+        host: localhost
+        port: 19530
+        collection-name: spintale_vectors
+        dimension: 1536
+        metric-type: COSINE
+
+# ==================== Resilience4j Configuration ====================
+resilience4j:
+  circuitbreaker:
+    instances:
+      ai-service:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 3
+        slow-call-duration-threshold: 2s
+        slow-call-rate-threshold: 100
+        
+  ratelimiter:
+    instances:
+      ai-service:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 5s
+        
+  retry:
+    instances:
+      ai-service:
+        max-attempts: 3
+        wait-duration: 1s
+        exponential-backoff-multiplier: 2
+
+# ==================== OpenTelemetry Configuration ====================
+otel:
+  traces:
+    exporter: otlp
+  metrics:
+    exporter: otlp
+  logs:
+    exporter: otlp
+  exporter:
+    otlp:
+      endpoint: http://localhost:4317
+
+# ==================== Logging Configuration ====================
+logging:
+  level:
+    com.spintale.ai: DEBUG
+    dev.langchain4j: INFO
+    io.opentelemetry: INFO

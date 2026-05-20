@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.spintale.ai.core.api.AiChatService;
+import com.spintale.ai.core.service.AiChatService;
 import com.spintale.ai.generation.service.ContentGenerationService;
 import com.spintale.ai.generation.service.TextGenerationService;
 import com.spintale.ai.generation.template.ContentTemplate;

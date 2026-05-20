@@ -42,7 +42,7 @@ public class RagAdvisor implements Advisor {
 
     @Override
     public int getOrder() {
-        return 400;
+        return AdvisorOrder.RAG;
     }
 
     @Override

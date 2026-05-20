@@ -1,15 +1,15 @@
 package com.spintale.ai.agent.workflow;
 
 import com.spintale.ai.agent.react.api.AgentResult;
-import com.spintale.ai.core.api.AiChatService;
+import com.spintale.ai.core.service.AiChatService;
 import com.spintale.ai.core.model.ChatRequest;
 import com.spintale.ai.core.model.ChatResponse;
 import com.spintale.ai.generation.model.GenerationRequest;
 import com.spintale.ai.generation.model.GenerationResponse;
-import com.spintale.ai.capability.hallucination.HallucinationDetector;
-import com.spintale.ai.capability.hallucination.HallucinationReport;
-import com.spintale.ai.capability.memory.api.LongTermMemoryManager;
-import com.spintale.ai.capability.memory.LongTermMemory;
+import com.spintale.ai.core.metrics.hallucination.HallucinationDetector;
+import com.spintale.ai.core.metrics.hallucination.HallucinationReport;
+import com.spintale.ai.agent.memory.api.LongTermMemoryManager;
+import com.spintale.ai.agent.memory.LongTermMemory;
 import com.spintale.ai.retrieval.vector.RetrievalResult;
 import com.spintale.ai.retrieval.vector.RetrievalService;
 import com.spintale.ai.agent.tool.registry.AiTool;

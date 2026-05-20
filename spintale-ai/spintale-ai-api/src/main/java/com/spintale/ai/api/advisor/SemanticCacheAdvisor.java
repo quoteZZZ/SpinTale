@@ -1,9 +1,9 @@
 package com.spintale.ai.api.advisor;
 
-import com.spintale.ai.capability.advisor.Advisor;
-import com.spintale.ai.capability.advisor.AdvisorContext;
-import com.spintale.ai.capability.advisor.AdvisorRequest;
-import com.spintale.ai.capability.advisor.AdvisorResponse;
+import com.spintale.ai.api.advisor.Advisor;
+import com.spintale.ai.api.advisor.AdvisorContext;
+import com.spintale.ai.api.advisor.AdvisorRequest;
+import com.spintale.ai.api.advisor.AdvisorResponse;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.data.embedding.Embedding;
@@ -63,7 +63,7 @@ public class SemanticCacheAdvisor implements Advisor {
 
     @Override
     public int getOrder() {
-        return 200; // 在安全检查和指标之后，在记忆注入之前
+        return AdvisorOrder.SEMANTIC_CACHE;
     }
 
     @Override
@@ -144,9 +144,10 @@ public class SemanticCacheAdvisor implements Advisor {
         try {
             // 生成查询向量
             Embedding queryEmbedding = embeddingModel.embed(query).content();
+            String queryHash = hashQuery(query);
 
             // 获取缓存桶（按向量哈希分桶，限制扫描范围�?
-            RMap<String, Object> bucket = redissonClient.getMap(CACHE_PREFIX + "bucket_0");
+            RMap<String, Object> bucket = redissonClient.getMap(CACHE_PREFIX + "bucket_" + Math.abs(queryHash.hashCode() % 16));
             if (bucket.isEmpty()) {
                 return null;
             }
@@ -190,7 +191,7 @@ public class SemanticCacheAdvisor implements Advisor {
             Embedding embedding = embeddingModel.embed(query).content();
             String queryHash = hashQuery(query);
 
-            RMap<String, Object> bucket = redissonClient.getMap(CACHE_PREFIX + "bucket_0");
+            RMap<String, Object> bucket = redissonClient.getMap(CACHE_PREFIX + "bucket_" + Math.abs(queryHash.hashCode() % 16));
             bucket.put("vec_" + queryHash, toFloatArray(embedding));
             bucket.put("res_" + queryHash, response);
             bucket.put("qry_" + queryHash, query);

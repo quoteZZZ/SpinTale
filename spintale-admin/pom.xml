@@ -55,18 +55,6 @@
             <artifactId>spintale-ai</artifactId>
         </dependency>
 
-        <!-- 定时任务-->
-        <dependency>
-            <groupId>com.spintale</groupId>
-            <artifactId>spintale-quartz</artifactId>
-        </dependency>
-
-        <!-- 代码生成-->
-        <dependency>
-            <groupId>com.spintale</groupId>
-            <artifactId>spintale-generator</artifactId>
-        </dependency>
-
     </dependencies>
 
     <build>

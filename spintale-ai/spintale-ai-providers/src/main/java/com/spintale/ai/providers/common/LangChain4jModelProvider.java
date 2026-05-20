@@ -3,7 +3,7 @@ package com.spintale.ai.providers.common;
 import java.util.Map;
 
 import com.spintale.ai.core.provider.AiModelProvider;
-import com.spintale.ai.core.api.AiChatService;
+import com.spintale.ai.core.service.AiChatService;
 
 import dev.langchain4j.model.chat.ChatModel;
 
