@@ -1,6 +1,6 @@
 package com.spintale.ai.retrieval.rag;
 
-import com.spintale.ai.client.api.ChatClient;
+import com.spintale.ai.api.api.ChatClient;
 import com.spintale.ai.core.model.ChatMessage;
 import com.spintale.ai.core.model.ChatRequest;
 import com.spintale.ai.core.model.ChatResponse;

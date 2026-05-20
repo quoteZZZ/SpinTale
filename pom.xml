@@ -273,7 +273,7 @@
 
             <dependency>
                 <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai-client</artifactId>
+                <artifactId>spintale-ai-api</artifactId>
                 <version>${spintale.version}</version>
             </dependency>
 
@@ -291,19 +291,7 @@
 
             <dependency>
                 <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai-tool</artifactId>
-                <version>${spintale.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai-skill</artifactId>
-                <version>${spintale.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai-observability</artifactId>
+                <artifactId>spintale-ai-providers</artifactId>
                 <version>${spintale.version}</version>
             </dependency>
 

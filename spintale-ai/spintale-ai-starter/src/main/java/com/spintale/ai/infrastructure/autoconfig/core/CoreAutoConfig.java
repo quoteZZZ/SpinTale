@@ -9,30 +9,21 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.spintale.ai.core.pipeline.AiChatInterceptor;
-import com.spintale.ai.core.prompt.PromptTemplate;
-import com.spintale.ai.core.prompt.SimplePromptTemplate;
+import com.spintale.ai.api.pipeline.AiChatInterceptor;
+import com.spintale.ai.api.prompt.PromptTemplate;
+import com.spintale.ai.api.api.ChatClient;
 import com.spintale.ai.core.provider.AiModelProvider;
 import com.spintale.ai.core.provider.AiProviderRegistry;
-import com.spintale.ai.core.api.AiChatService;
-import com.spintale.ai.core.api.ChatClient;
-import com.spintale.ai.core.impl.DefaultChatClient;
+import com.spintale.ai.core.service.AiChatService;
 import com.spintale.ai.infrastructure.properties.AiProperties;
-import com.spintale.ai.infrastructure.provider.RoutingChatService;
-import com.spintale.ai.tool.registry.ToolRegistry;
+import com.spintale.ai.providers.common.RoutingChatService;
+import com.spintale.ai.agent.tool.registry.ToolRegistry;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 
 @Configuration
 public class CoreAutoConfig
 {
-    @Bean
-    @ConditionalOnMissingBean(PromptTemplate.class)
-    public PromptTemplate promptTemplate()
-    {
-        return new SimplePromptTemplate();
-    }
-
     @Bean
     @ConditionalOnMissingBean(AiProviderRegistry.class)
     public AiProviderRegistry aiProviderRegistry(List<AiModelProvider> providers, AiProperties properties)
@@ -46,13 +37,6 @@ public class CoreAutoConfig
                                        List<AiChatInterceptor> interceptors)
     {
         return new RoutingChatService(providerRegistry, interceptors);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(ChatClient.class)
-    public ChatClient chatClient(AiChatService aiChatService)
-    {
-        return new DefaultChatClient(aiChatService);
     }
 
     @Bean

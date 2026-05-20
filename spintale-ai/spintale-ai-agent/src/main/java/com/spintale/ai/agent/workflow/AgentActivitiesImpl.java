@@ -12,7 +12,7 @@ import com.spintale.ai.capability.memory.api.LongTermMemoryManager;
 import com.spintale.ai.capability.memory.LongTermMemory;
 import com.spintale.ai.retrieval.vector.RetrievalResult;
 import com.spintale.ai.retrieval.vector.RetrievalService;
-import com.spintale.ai.tool.registry.AiTool;
+import com.spintale.ai.agent.tool.registry.AiTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

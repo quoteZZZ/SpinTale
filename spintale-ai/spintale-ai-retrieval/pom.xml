@@ -23,10 +23,10 @@
             <artifactId>spintale-ai-core</artifactId>
         </dependency>
 
-        <!-- Client Module -->
+        <!-- API Module -->
         <dependency>
             <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai-client</artifactId>
+            <artifactId>spintale-ai-api</artifactId>
         </dependency>
 
         <!-- LangChain4j -->

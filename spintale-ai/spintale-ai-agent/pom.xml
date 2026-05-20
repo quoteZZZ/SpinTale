@@ -14,7 +14,7 @@
     <packaging>jar</packaging>
 
     <name>SpinTale AI Agent</name>
-    <description>Agent orchestration and workflow module</description>
+    <description>Agent orchestration, workflow and tool system module</description>
 
     <dependencies>
         <!-- Core Module -->
@@ -23,16 +23,10 @@
             <artifactId>spintale-ai-core</artifactId>
         </dependency>
 
-        <!-- Client Module -->
+        <!-- API Module -->
         <dependency>
             <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai-client</artifactId>
-        </dependency>
-
-        <!-- Tool Module -->
-        <dependency>
-            <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai-tool</artifactId>
+            <artifactId>spintale-ai-api</artifactId>
         </dependency>
 
         <!-- Lombok -->

@@ -17,12 +17,10 @@
 
     <modules>
         <module>spintale-ai-core</module>
-        <module>spintale-ai-client</module>
+        <module>spintale-ai-api</module>
         <module>spintale-ai-retrieval</module>
         <module>spintale-ai-agent</module>
-        <module>spintale-ai-tool</module>
-        <module>spintale-ai-skill</module>
-        <module>spintale-ai-observability</module>
+        <module>spintale-ai-providers</module>
         <module>spintale-ai-starter</module>
     </modules>
 

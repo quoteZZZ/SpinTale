@@ -17,34 +17,34 @@
     <description>Spring Boot autoconfiguration for SpinTale AI</description>
 
     <dependencies>
-        <!-- All AI Modules -->
+        <!-- Core Module (includes observability/metrics) -->
         <dependency>
             <groupId>com.spintale</groupId>
             <artifactId>spintale-ai-core</artifactId>
         </dependency>
+
+        <!-- API Module (includes client, advisor, skill) -->
         <dependency>
             <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai-client</artifactId>
+            <artifactId>spintale-ai-api</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai-retrieval</artifactId>
-        </dependency>
+
+        <!-- Agent Module (includes tools) -->
         <dependency>
             <groupId>com.spintale</groupId>
             <artifactId>spintale-ai-agent</artifactId>
         </dependency>
+
+        <!-- Retrieval Module (RAG) -->
         <dependency>
             <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai-tool</artifactId>
+            <artifactId>spintale-ai-retrieval</artifactId>
         </dependency>
+
+        <!-- Providers Module (OpenAI, Ollama, etc.) -->
         <dependency>
             <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai-skill</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai-observability</artifactId>
+            <artifactId>spintale-ai-providers</artifactId>
         </dependency>
 
         <!-- Spring Boot -->
