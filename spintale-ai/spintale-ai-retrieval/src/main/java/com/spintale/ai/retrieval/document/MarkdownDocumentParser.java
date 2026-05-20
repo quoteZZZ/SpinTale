@@ -1,0 +1,42 @@
+package com.spintale.ai.retrieval.document;
+
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.Metadata;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Markdown document parser.
+ */
+@Slf4j
+public class MarkdownDocumentParser implements DocumentParser {
+
+    @Override
+    public List<Document> parse(InputStream inputStream, DocumentMetadata metadata) {
+        try {
+            String text = IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+
+            Metadata langchainMetadata = new Metadata();
+            langchainMetadata.put("source", metadata.getSource());
+            langchainMetadata.put("filename", metadata.getFilename());
+            langchainMetadata.put("file_type", "markdown");
+
+            Document doc = Document.from(text, langchainMetadata);
+            return Collections.singletonList(doc);
+        } catch (IOException e) {
+            log.error("Failed to parse Markdown document: {}", metadata.getFilename(), e);
+            throw new RuntimeException("Failed to parse Markdown document: " + metadata.getFilename(), e);
+        }
+    }
+
+    @Override
+    public String[] getSupportedFormats() {
+        return new String[]{"md", "markdown", "MD", "MARKDOWN"};
+    }
+}

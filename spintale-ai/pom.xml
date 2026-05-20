@@ -11,94 +11,29 @@
     </parent>
 
     <artifactId>spintale-ai</artifactId>
-    <name>SpinTale AI Module</name>
-    <description>Provider-agnostic AI module with LangChain4j as the default adapter.</description>
+    <packaging>pom</packaging>
+    <name>SpinTale AI Module (Parent)</name>
+    <description>Provider-agnostic AI module with modular architecture.</description>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
-        </dependency>
+    <modules>
+        <module>spintale-ai-core</module>
+        <module>spintale-ai-client</module>
+        <module>spintale-ai-retrieval</module>
+        <module>spintale-ai-agent</module>
+        <module>spintale-ai-tool</module>
+        <module>spintale-ai-skill</module>
+        <module>spintale-ai-observability</module>
+        <module>spintale-ai-starter</module>
+    </modules>
 
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-open-ai</artifactId>
-        </dependency>
-
-        <!-- Vector Database: Milvus SDK for the local adapter -->
-        <dependency>
-            <groupId>io.milvus</groupId>
-            <artifactId>milvus-sdk-java</artifactId>
-        </dependency>
-
-        <!-- Document Parser: Apache PDFBox -->
-        <dependency>
-            <groupId>org.apache.pdfbox</groupId>
-            <artifactId>pdfbox</artifactId>
-        </dependency>
-
-        <!-- Document Parser: Apache POI for Word/Excel -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba.fastjson2</groupId>
-            <artifactId>fastjson2</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.spintale</groupId>
-            <artifactId>spintale-common</artifactId>
-        </dependency>
-
-        <!-- Redis for Memory Caching -->
-        <dependency>
-            <groupId>org.redisson</groupId>
-            <artifactId>redisson-spring-boot-starter</artifactId>
-        </dependency>
-
-        <!-- Local Cache: Caffeine -->
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
-
-        <!-- Workflow Engine: Temporal -->
-        <dependency>
-            <groupId>io.temporal</groupId>
-            <artifactId>temporal-sdk</artifactId>
-        </dependency>
-
-        <!-- Temporal Spring Boot Starter -->
-        <dependency>
-            <groupId>io.temporal</groupId>
-            <artifactId>temporal-spring-boot-starter</artifactId>
-        </dependency>
-
-        <!-- Retry and Resilience -->
-        <dependency>
-            <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
-        </dependency>
-
-        <!-- Metrics and Monitoring -->
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
-        </dependency>
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <!-- Import parent dependencies -->
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 </project>

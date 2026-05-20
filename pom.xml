@@ -264,6 +264,55 @@
                 <version>${spintale.version}</version>
             </dependency>
 
+            <!-- AI Module Sub-modules -->
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-core</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-client</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-retrieval</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-agent</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-tool</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-skill</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-observability</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-starter</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

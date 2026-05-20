@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.spintale</groupId>
+        <artifactId>spintale-ai</artifactId>
+        <version>3.9.2</version>
+    </parent>
+
+    <artifactId>spintale-ai-agent</artifactId>
+    <packaging>jar</packaging>
+
+    <name>SpinTale AI Agent</name>
+    <description>Agent orchestration and workflow module</description>
+
+    <dependencies>
+        <!-- Core Module -->
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-ai-core</artifactId>
+        </dependency>
+
+        <!-- Client Module -->
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-ai-client</artifactId>
+        </dependency>
+
+        <!-- Tool Module -->
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-ai-tool</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>
