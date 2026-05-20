@@ -49,10 +49,10 @@
             <artifactId>spintale-framework</artifactId>
         </dependency>
 
-        <!-- AI 模块-->
+        <!-- AI starter module -->
         <dependency>
             <groupId>com.spintale</groupId>
-            <artifactId>spintale-ai</artifactId>
+            <artifactId>spintale-ai-starter</artifactId>
         </dependency>
 
         <!-- Jasypt Configuration Encryption -->

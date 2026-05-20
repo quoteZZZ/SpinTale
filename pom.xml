@@ -303,13 +303,6 @@
                 <version>${spintale.version}</version>
             </dependency>
 
-            <!-- AI 模块-->
-            <dependency>
-                <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai</artifactId>
-                <version>${spintale.version}</version>
-            </dependency>
-
             <!-- 系统模块-->
             <dependency>
                 <groupId>com.spintale</groupId>
@@ -367,7 +360,12 @@
     <modules>
         <module>spintale-admin</module>
         <module>spintale-framework</module>
-        <module>spintale-ai</module>
+        <module>spintale-ai-core</module>
+        <module>spintale-ai-api</module>
+        <module>spintale-ai-agent</module>
+        <module>spintale-ai-retrieval</module>
+        <module>spintale-ai-providers</module>
+        <module>spintale-ai-starter</module>
         <module>spintale-system</module>
         <module>spintale-common</module>
     </modules>
