@@ -1,2230 +1,1236 @@
-# SpinTale AI 模块重构与升级方案
+# SpinTale AI 目标结构与直接依赖方案
 
-## 1. 项目现状分析
+## 1. 核心结论
 
-### 1.1 当前模块结构
+当前 AI 模块最需要治理的是 **直接依赖关系**，不是 Maven 传递依赖。后续所有依赖图、依赖表、模块边界都只讨论 `pom.xml` 中显式声明的直接依赖。
+
+推荐最终结构：保留 7 个模块，但按 **5 个 AI 主体模块 + 2 个集成模块** 理解，而不是把它们放在同一层。
 
 ```text
 SpinTale
-├── spintale-admin          (应用启动入口)
-├── spintale-common         (RuoYi公共模块)
-├── spintale-framework      (RuoYi框架核心)
-├── spintale-system         (系统管理模块)
-├── spintale-ai-core        (AI核心抽象与基础设施)
-├── spintale-ai-api         (AI客户端API与Advisor)
-├── spintale-ai-agent       (Agent、Tool、Workflow)
-├── spintale-ai-retrieval   (RAG检索与向量存储)
-├── spintale-ai-providers   (模型Provider适配)
-└── spintale-ai-starter     (Spring Boot自动配置)
+├── spintale-admin
+├── spintale-common
+├── spintale-framework
+├── spintale-system
+│
+├── AI 主体层
+│   ├── spintale-ai-core
+│   ├── spintale-ai-runtime
+│   ├── spintale-ai-provider
+│   ├── spintale-ai-rag
+│   └── spintale-ai-agent
+└── AI 集成层
+    ├── spintale-ai-starter
+    └── spintale-ai-console
 ```
 
-### 1.2 当前依赖关系
+关键决策：
 
-```text
-【RuoYi基础模块】
-spintale-admin -> spintale-framework, spintale-ai-starter
-
-【AI模块依赖链】
-spintale-ai-core -> Spring Boot, Resilience4j, Caffeine, OpenTelemetry
-spintale-ai-api -> spintale-ai-core, LangChain4j, Redis, Caffeine
-spintale-ai-providers -> spintale-ai-core, spintale-ai-api, LangChain4j
-spintale-ai-retrieval -> spintale-ai-core, spintale-ai-api, Milvus, PDFBox
-spintale-ai-agent -> spintale-ai-core, spintale-ai-api, spintale-ai-retrieval, Temporal
-spintale-ai-starter -> spintale-ai-core, spintale-ai-api, spintale-ai-agent, spintale-ai-retrieval, spintale-ai-providers
-```
-
-### 1.3 现状问题分析
-
-| 问题 | 现状 | 影响 |
-|------|------|------|
-| **Core依赖过重** | spintale-ai-core依赖Spring Boot、Resilience4j等 | 违背"核心层零依赖"原则，无法独立复用 |
-| **API模块定位模糊** | spintale-ai-api混合了Client、Advisor、Skill | 职责不清晰，边界模糊 |
-| **缺少Runtime概念** | 运行时逻辑分散在core和api中 | 缺乏统一的执行上下文和追踪 |
-| **缺少Console层** | 无AI管理控制台模块 | 无法与RuoYi权限、菜单、日志集成 |
-| **命名不一致** | retrieval而非rag，providers而非provider | 语义不够准确 |
-| **Agent依赖Retrieval** | spintale-ai-agent依赖spintale-ai-retrieval | Agent与RAG耦合，不够灵活 |
-
-### 1.4 技术栈现状
-
-项目已集成的核心技术：
-
-```text
-【AI框架】
-- LangChain4j 1.13.1 (统一AI服务抽象)
-- LangChain4j OpenAI
-- LangChain4j Ollama
-
-【基础设施】
-- Resilience4j (熔断、限流、重试)
-- Caffeine (本地缓存)
-- Redisson (Redis客户端)
-- OpenTelemetry (分布式追踪)
-
-【向量数据库】
-- Milvus 2.5.8
-
-【工作流引擎】
-- Temporal 1.35.0
-
-【文档处理】
-- PDFBox 3.0.7
-- Apache POI
-```
-
-## 2. 重构目标与原则
-
-### 2.1 核心目标
-
-```text
-SpinTale = RuoYi框架 + 自定义AI框架
-
-核心定位：
-1. 以RuoYi为基础框架（权限、菜单、日志、用户管理等）
-2. 集成自研AI能力（Chat、RAG、Agent、Tool等）
-3. 通过console模块实现无缝集成
-4. 保持AI能力可独立使用（starter模块）
-```
-
-**架构组成**：
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│                    SpinTale 项目                         │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  【RuoYi框架层】                                          │
-│  ├── spintale-admin      (启动入口)                      │
-│  ├── spintale-common     (公共组件)                      │
-│  ├── spintale-framework  (框架核心)                      │
-│  └── spintale-system     (系统管理)                      │
-│                                                          │
-│  【AI能力层】                                             │
-│  ├── spintale-ai-core      (核心抽象)                    │
-│  ├── spintale-ai-runtime   (运行时)                      │
-│  ├── spintale-ai-api       (客户端API)                   │
-│  ├── spintale-ai-provider  (模型适配)                    │
-│  ├── spintale-ai-rag       (RAG能力)                     │
-│  └── spintale-ai-agent     (Agent能力)                   │
-│                                                          │
-│  【集成层】                                               │
-│  ├── spintale-ai-starter   (自动配置，可独立使用)        │
-│  └── spintale-ai-console   (RuoYi集成，强绑定)           │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-```
-
-**为什么采用RuoYi + 自定义AI框架的组合？**
-
-1. **RuoYi优势**：
-   - ✅ 成熟的后台管理框架
-   - ✅ 完善的权限体系（RBAC）
-   - ✅ 丰富的组件（字典、配置、定时任务等）
-   - ✅ 开箱即用的管理界面
-
-2. **自定义AI框架优势**：
-   - ✅ 完全可控，可深度定制
-   - ✅ 统一的模型抽象（支持多Provider）
-   - ✅ 完整的RAG Pipeline
-   - ✅ 可观测的Agent系统
-   - ✅ 可独立使用（不绑定RuoYi）
-
-3. **组合后的优势**：
-   - ✅ 快速搭建AI管理后台（RuoYi提供基础）
-   - ✅ 强大的AI能力（自定义框架提供）
-   - ✅ 企业级特性（权限、审计、日志）
-   - ✅ 灵活部署（可拆分独立使用）
-
-**RuoYi + AI框架实际使用示例**：
-
-**示例1：AI对话接口（集成RuoYi权限）**
-
-```java
-@RestController
-@RequestMapping("/ai/chat")
-public class AiChatController extends BaseController {
-    
-    @Autowired
-    private ChatClient chatClient;
-    
-    /**
-     * AI对话接口
-     * 
-     * @RuoYi集成点：
-     * - @PreAuthorize: 权限控制
-     * - @Log: 操作日志记录
-     * - AjaxResult: 统一返回格式
-     * - getUserId(): 获取当前用户（RuoYi提供）
-     */
-    @PreAuthorize("@ss.hasPermi('ai:chat:use')")
-    @Log(title = "AI对话", businessType = BusinessType.OTHER)
-    @PostMapping("/send")
-    public AjaxResult chat(@RequestBody ChatRequest request) {
-        // 1. RuoYi权限已校验
-        Long userId = getUserId();  // RuoYi提供
-        
-        // 2. 使用AI能力（自定义框架）
-        String response = chatClient
-            .prompt(request.getMessage())
-            .user(userId.toString())
-            .call()
-            .content();
-        
-        // 3. RuoYi返回格式
-        return AjaxResult.success(response);
-    }
-}
-```
-
-**示例2：知识库管理（RuoYi菜单+AI能力）**
-
-```java
-@RestController
-@RequestMapping("/ai/knowledge")
-public class KnowledgeController extends BaseController {
-    
-    @Autowired
-    private KnowledgeBaseService knowledgeService;  // AI能力
-    
-    /**
-     * 创建知识库
-     */
-    @PreAuthorize("@ss.hasPermi('ai:knowledge:add')")
-    @Log(title = "知识库管理", businessType = BusinessType.INSERT)
-    @PostMapping
-    public AjaxResult add(@RequestBody KnowledgeBase kb) {
-        // RuoYi: 数据权限校验
-        kb.setCreateBy(getUsername());
-        kb.setCreateTime(DateUtils.getNowDate());
-        
-        // AI框架: 创建知识库
-        knowledgeService.createKnowledgeBase(kb);
-        
-        return AjaxResult.success();
-    }
-    
-    /**
-     * 文档上传入库（RAG Pipeline）
-     */
-    @PreAuthorize("@ss.hasPermi('ai:knowledge:upload')")
-    @PostMapping("/upload")
-    public AjaxResult upload(@RequestParam("file") MultipartFile file, 
-                             @RequestParam Long kbId) {
-        // AI框架: RAG文档处理
-        DocumentProcessResult result = knowledgeService
-            .ingestDocument(kbId, file)
-            .parse()      // 解析
-            .chunk()      // 分块
-            .embed()      // 向量化
-            .index();     // 入库
-        
-        return AjaxResult.success(result);
-    }
-}
-```
-
-**示例3：Agent工作流（RuoYi定时任务+AI Agent）**
-
-```java
-/**
- * Agent定时任务
- * 
- * @RuoYi集成点：
- * - @Component: Spring管理
- * - Quartz定时任务: RuoYi定时任务系统
- */
-@Component("aiAgentTask")
-public class AiAgentTask {
-    
-    @Autowired
-    private AgentRuntime agentRuntime;
-    
-    /**
-     * 定时执行Agent任务
-     * RuoYi配置：cron表达式、任务状态管理等
-     */
-    public void executeAgentTask(Long agentId, String input) {
-        // AI框架: Agent执行
-        AgentRunResult result = agentRuntime
-            .createRun(agentId, input)
-            .execute();
-        
-        // 结果处理
-        log.info("Agent任务执行完成: {}", result.getOutput());
-    }
-}
-```
-
-**RuoYi菜单配置示例**：
-
-```sql
--- AI控制台菜单（RuoYi菜单系统）
-INSERT INTO sys_menu VALUES(
-    2000, 'AI控制台', 0, 5, 'ai', NULL, NULL, 1, 0, 'M', '0', '0', '', 'robot', 'admin', sysdate(), '', NULL, 'AI管理菜单'
-);
-
--- 模型管理
-INSERT INTO sys_menu VALUES(
-    2001, '模型管理', 2000, 1, 'model', 'ai/model/index', NULL, 1, 0, 'C', '0', '0', 'ai:model:list', 'model', 'admin', sysdate(), '', NULL, '模型配置管理'
-);
-
--- 知识库管理
-INSERT INTO sys_menu VALUES(
-    2002, '知识库管理', 2000, 2, 'knowledge', 'ai/knowledge/index', NULL, 1, 0, 'C', '0', '0', 'ai:knowledge:list', 'book', 'admin', sysdate(), '', NULL, '知识库管理菜单'
-);
-
--- Agent管理
-INSERT INTO sys_menu VALUES(
-    2003, 'Agent管理', 2000, 3, 'agent', 'ai/agent/index', NULL, 1, 0, 'C', '0', '0', 'ai:agent:list', 'cascader', 'admin', sysdate(), '', NULL, 'Agent管理菜单'
-);
-```
-
-**配置文件示例**：
-
-```yaml
-# application.yml
-spring:
-  datasource:
-    # RuoYi数据源配置
-    url: jdbc:mysql://localhost:3306/spintale?useUnicode=true
-    username: root
-    password: password
-
-# RuoYi配置
-ruoyi:
-  name: SpinTale
-  version: 3.9.2
-  captchaEnabled: true
-
-# AI框架配置（自定义AI框架）
-spintale:
-  ai:
-    default-provider: openai
-    providers:
-      openai:
-        api-key: ${OPENAI_API_KEY}
-        base-url: https://api.openai.com/v1
-        default-model: gpt-4-turbo-preview
-      ollama:
-        base-url: http://localhost:11434
-        default-model: llama2
-    rag:
-      chunk-size: 500
-      chunk-overlap: 50
-      top-k: 5
-    agent:
-      max-steps: 10
-      timeout: 300000
-```
-
-**项目启动后的能力**：
-
-```text
-启动后即可获得：
-
-【RuoYi提供的能力】
-✅ 用户管理、角色管理、菜单管理
-✅ 部门管理、岗位管理、字典管理
-✅ 登录认证、权限控制、操作日志
-✅ 在线用户、定时任务、服务监控
-✅ 代码生成、系统通知
-
-【AI框架提供的能力】
-✅ 模型配置管理（多Provider支持）
-✅ 知识库管理（文档上传、RAG检索）
-✅ Agent管理（Tool配置、工作流）
-✅ 运行历史查看（Trace、Token、Cost）
-✅ AI对话接口（流式、同步）
-✅ Embedding接口
-✅ RAG检索增强生成
-
-【集成后的新能力】
-✅ AI功能权限控制（继承RuoYi权限体系）
-✅ AI操作日志记录（继承RuoYi日志系统）
-✅ AI任务定时执行（集成RuoYi定时任务）
-✅ AI使用统计分析（数据权限隔离）
-✅ AI成本控制与审计（企业级特性）
-```
-
-### 2.2 设计原则
-
-基于对Spring AI、LangChain4j、Semantic Kernel、LlamaIndex等框架的调研：
-
-```text
-【原则1：分层抽象】
-- Core层：纯接口定义，零框架依赖
-- Runtime层：执行上下文、追踪、策略
-- API层：客户端、Advisor、拦截器
-- Provider层：模型适配，每个Provider独立模块
-- 业务层：RAG、Agent基于核心抽象构建
-- Console层：管理控制台，RuoYi集成
-
-【原则2：依赖单向】
-- 上层可依赖下层，下层不依赖上层
-- RAG与Agent互不依赖
-- Provider不依赖Runtime
-
-【原则3：职责清晰】
-- 每个模块职责单一、边界清晰
-- 避免跨层调用和循环依赖
-
-【原则4：可观测优先】
-- 每次调用生成traceId/runId
-- 记录token、cost、latency
-- 支持分布式追踪
-
-【原则5：渐进式重构】
-- 保持现有功能可用
-- 分阶段调整结构
-- 向后兼容
-```
+1. `spintale-ai-core` 只放核心抽象，不直接依赖 Spring Boot、LangChain4j、RuoYi、数据库、缓存、可观测 SDK。
+2. `spintale-ai-runtime` 是统一执行入口，承接 ChatClient、AdvisorChain、调用上下文、运行记录、超时、重试、fallback、成本统计。
+3. `spintale-ai-provider` 只实现模型供应商适配，不直接依赖 Runtime、RAG、Agent、Console、Starter。
+4. `spintale-ai-rag` 只做知识库和 RAG，不直接依赖 Agent，不直接依赖 Console。
+5. `spintale-ai-agent` 只做 Agent、Tool、Memory、Workflow，不直接依赖 RAG，不直接依赖 Console。
+6. `spintale-ai-starter` 只做自动配置，不依赖 RuoYi。
+7. `spintale-ai-console` 是唯一允许直接依赖 RuoYi 模块的 AI 模块；默认不直接依赖 provider，模型配置和模型状态通过 runtime 暴露的管理门面访问。
+8. `spintale-ai-api` 不建议长期保留为独立模块，最终应拆分到 `core` 和 `runtime`。
 
 ---
 
-## 3. 推荐模块结构
+## 2. 当前直接依赖关系诊断
 
-### 3.1 目标结构
-
-基于现状分析和框架对比，推荐以下模块结构：
+以下是当前 AI 模块的直接依赖关系，只统计 `pom.xml` 显式声明的项目内模块依赖。
 
 ```text
-SpinTale
-├── spintale-admin          (应用启动入口)
-├── spintale-common         (RuoYi公共模块)
-├── spintale-framework      (RuoYi框架核心)
-├── spintale-system         (系统管理模块)
-│
-├── spintale-ai-core        (核心抽象层 - 纯接口)
-├── spintale-ai-runtime     (运行时层 - 执行上下文)
-├── spintale-ai-api         (API层 - 客户端与Advisor)
-├── spintale-ai-provider    (Provider层 - 模型适配)
-├── spintale-ai-rag         (业务层 - RAG能力)
-├── spintale-ai-agent       (业务层 - Agent能力)
-├── spintale-ai-starter     (装配层 - 自动配置)
-└── spintale-ai-console     (控制台层 - 管理接口)
+spintale-ai-core
+└── 无项目内模块依赖
+
+spintale-ai-api
+└── spintale-ai-core
+
+spintale-ai-retrieval
+├── spintale-ai-core
+└── spintale-ai-api
+
+spintale-ai-agent
+├── spintale-ai-core
+├── spintale-ai-api
+└── spintale-ai-retrieval
+
+spintale-ai-providers
+├── spintale-ai-core
+└── spintale-ai-api
+
+spintale-ai-starter
+├── spintale-ai-core
+├── spintale-ai-api
+├── spintale-ai-agent
+├── spintale-ai-retrieval
+└── spintale-ai-providers
+
+spintale-admin
+└── spintale-ai-starter
 ```
 
-### 3.2 模块职责定义
+### 2.1 当前直接依赖问题
 
-| 模块 | 定位 | 核心职责 |
-|------|------|----------|
-| **spintale-ai-core** | 核心抽象层 | 定义ChatModel、EmbeddingModel、VectorStore、Tool等核心接口，纯POJO，零依赖 |
-| **spintale-ai-runtime** | 运行时层 | 统一执行上下文、traceId/runId生成、策略管理、成本统计、分布式追踪 |
-| **spintale-ai-api** | API层 | ChatClient/EmbeddingClient流畅API、Advisor责任链、拦截器 |
-| **spintale-ai-provider** | Provider层 | OpenAI、Ollama、Azure等模型适配，模型路由、能力发现 |
-| **spintale-ai-rag** | 业务层 | 文档解析、向量化、检索、重排、RAG Pipeline |
-| **spintale-ai-agent** | 业务层 | Agent定义、Tool执行、Memory管理、Workflow编排 |
-| **spintale-ai-starter** | 装配层 | Spring Boot自动配置、配置属性、默认Bean装配。**独立模块，可脱离RuoYi使用** |
-| **spintale-ai-console** | 控制台层 | Controller、权限适配、操作日志、AI管理功能。**强绑定RuoYi，不可脱离使用** |
+| 问题 | 当前表现 | 影响 |
+| --- | --- | --- |
+| `core` 依赖外部框架过重 | 直接引入 Spring Web、Resilience4j、Caffeine、OpenTelemetry SDK/exporter | 核心抽象无法独立复用，底层被框架污染 |
+| `api` 成为中间枢纽 | `retrieval`、`agent`、`providers` 都直接依赖 `api` | API 层职责变重，容易继续堆 facade、advisor、provider glue |
+| `agent` 直接依赖 `retrieval` | `spintale-ai-agent -> spintale-ai-retrieval` | Agent 与 RAG 绑死，后续 Tool 化、插件化困难 |
+| `providers` 直接依赖 `api` | `spintale-ai-providers -> spintale-ai-api` | Provider 不再是底层模型适配，而是依赖上层 API |
+| `starter` 显式依赖所有 AI 模块 | starter 直接依赖 core/api/agent/retrieval/providers | 自动配置层变成“大杂烩聚合层”，边界不清 |
+| 缺少 `runtime` | Chat、RAG、Agent 调用缺少统一执行入口 | trace、cost、retry、fallback、stream 生命周期分散 |
+| 缺少 `console` | RuoYi 集成没有单独边界模块 | 权限、日志、返回体容易侵入 starter 或能力模块 |
 
-**模块设计说明**：
+---
 
-**为什么要保持starter和console分离？**
+## 3. 基于外部 AI 框架经验的目标结构
 
-1. **职责不同**：
-   - starter：配置层（怎么做），负责自动配置、Bean装配
-   - console：控制层（做什么），负责HTTP接口、权限管理
+### 3.1 目标态设计来源
 
-2. **复用场景**：
-   ```text
-   场景1：完整RuoYi项目 -> 使用 starter + console
-   场景2：只用AI能力（非RuoYi项目）-> 只用 starter
-   场景3：自定义管理界面 -> 使用 starter + 自己实现console
-   ```
+目标结构不是按当前目录简单改名，而是根据外部 AI 框架的成熟设计提炼后重新划分。
 
-3. **依赖隔离**：
-   - starter不依赖RuoYi，保持纯净
-   - console强依赖RuoYi（spintale-common/framework/system）
+| 参考框架 | 值得采纳的结构 | SpinTale 目标结构决策 | 需要避免 |
+| --- | --- | --- | --- |
+| Spring AI | `ChatClient`、Advisor、VectorStore、Observability、Spring Boot Starter | 建立 `spintale-ai-runtime` 承接 Client/Advisor/Trace；建立 `spintale-ai-starter` 承接 AutoConfiguration | Spring AI 类型进入 `core`，starter 承载业务 Controller |
+| LangChain4j | Java 模型适配、AI Service、Tool、Memory、RAG 抽象 | `spintale-ai-provider` 内部可用 LangChain4j 适配模型；`agent.tool` 借鉴 Tool schema | 业务层、core/runtime 公共接口直接暴露 LangChain4j 类型 |
+| Semantic Kernel | Kernel、Plugin、Function、工具权限边界 | `spintale-ai-agent` 内建立 ToolPlugin/ToolDefinition/ToolInvocation；工具增加权限码和风险等级 | 初期做复杂 Planner 或把插件系统做成大平台 |
+| LlamaIndex | ingestion、metadata、index、retriever、response synthesis | `spintale-ai-rag` 按 `document/ingestion/chunk/retrieval/citation/eval` 组织 | 直接照搬过多 Python 生态抽象 |
+| Haystack | Component + Pipeline、Retriever/Generator/Evaluator 分离 | RAG 内部明确 ingestion/retrieval/answer/eval 组件边界 | 过早做可视化 pipeline 和组件市场 |
+| Dify | 模型、知识库、应用、工作流、日志、反馈控制台 | `spintale-ai-console` 做 RuoYi AI 控制台，承载模型、知识库、Agent、日志、成本、反馈 | 把 Console 放进 starter，或一开始做完整低代码平台 |
+| RAGFlow | 文档理解、chunk 可视化、citation、检索可解释性 | RAG 强化 document/chunk/citation；Console 提供 chunk/引用/检索调试视图 | 目标态一开始绑定 OCR/版面模型等重依赖 |
+| OpenAI Agents SDK | AgentRun、ToolCall、Handoff、Guardrail、Tracing | `agent.run/guardrail/tool` 和 `runtime.observability` 成为一等结构 | 多 Agent/handoff 先行，导致调试和成本失控 |
+| LangGraph | checkpoint、human-in-the-loop、durable execution、memory | `agent.checkpoint`、`agent.approval` 作为目标包；Temporal 作为可选适配 | 主 Agent 模块强绑定状态图引擎或 Temporal |
 
-4. **符合Spring Boot惯例**：
-   所有Spring Boot starter都是独立模块（如mybatis-spring-boot-starter）
+由此得到的结构原则：
 
-**AI能力独立使用方式**：
+1. Spring 生态能力只进入 `starter/console/runtime`，不进入 `core`。
+2. 模型 SDK 和 LangChain4j 只进入 `provider` 或特定 adapter，不进入公共接口。
+3. RAG 独立成知识库模块，不再只叫 retrieval。
+4. Agent 独立成工具、记忆、审批、checkpoint 模块，不直接依赖 RAG。
+5. Console 独立承载 RuoYi 集成，不污染 starter 和底层能力。
+6. Evaluation 先作为 RAG/Runtime/Agent 的目标能力包，成熟后再考虑独立模块。
 
-**方式1：在其他Spring Boot项目中使用**（完全脱离RuoYi）
+### 3.2 最终直接依赖树
 
-```xml
-<!-- 只需依赖starter -->
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-starter</artifactId>
-        <version>3.9.2</version>
-    </dependency>
-    <!-- 不需要引入任何RuoYi依赖 -->
-</dependencies>
-```
-
-```yaml
-# application.yml配置
-spintale:
-  ai:
-    provider: openai
-    openai:
-      api-key: ${OPENAI_API_KEY}
-      model: gpt-4-turbo-preview
-```
-
-```java
-// 直接使用AI能力
-@Service
-public class MyService {
-    @Autowired
-    private ChatClient chatClient;  // 由starter自动装配
-    
-    public String chat(String question) {
-        return chatClient.prompt(question).call().content();
-    }
-}
-```
-
-**方式2：在微服务架构中使用**
+以下依赖全部表示 `pom.xml` 中应该显式声明的直接依赖，不包含 Maven 传递依赖。
 
 ```text
-微服务架构示例：
-├── user-service (用户服务，RuoYi)
-├── order-service (订单服务，RuoYi)
-├── ai-service (AI服务，非RuoYi)  ← 只用starter
-│   ├── 依赖：spintale-ai-starter
-│   └── 不依赖：RuoYi相关模块
-└── notification-service (通知服务)
+spintale-ai-core
+└── 无项目内模块依赖
+
+spintale-ai-runtime
+└── spintale-ai-core
+
+spintale-ai-provider
+└── spintale-ai-core
+
+spintale-ai-rag
+├── spintale-ai-core
+└── spintale-ai-runtime
+
+spintale-ai-agent
+├── spintale-ai-core
+└── spintale-ai-runtime
+
+spintale-ai-starter
+├── spintale-ai-runtime
+├── spintale-ai-provider
+├── spintale-ai-rag
+└── spintale-ai-agent
+
+spintale-ai-console
+├── spintale-ai-runtime
+├── spintale-ai-rag
+├── spintale-ai-agent
+├── spintale-common
+├── spintale-framework
+└── spintale-system
+
+spintale-admin
+├── spintale-framework
+├── spintale-system
+├── spintale-ai-starter
+└── spintale-ai-console
 ```
 
-**方式3：作为SDK提供给其他团队**
+说明：
 
-```text
-其他团队使用步骤：
-1. 引入依赖：spintale-ai-starter
-2. 配置API Key
-3. 直接调用ChatClient/EmbeddingClient
-4. 无需关心RuoYi、权限、数据库等
-```
+1. `spintale-ai-provider` 不直接依赖 `runtime`，避免 provider 和 runtime 形成互相感知。Provider 只实现 `core` 中定义的模型接口。
+2. `spintale-ai-rag` 不直接依赖 `provider`。RAG 需要 embedding、rerank、chat 时，通过 `core` 抽象接口和 `runtime` 执行入口获得能力。
+3. `spintale-ai-agent` 不直接依赖 `provider`。Agent 调模型统一走 `runtime`。
+4. `spintale-ai-agent` 不直接依赖 `rag`。Agent 需要知识库能力时，将 RAG 暴露为 Tool，由运行期注入。
+5. `spintale-ai-starter` 可以直接依赖 `provider/rag/agent/runtime`，因为它负责自动装配。
+6. `spintale-ai-console` 可以直接依赖 RuoYi 模块，因为它就是 RuoYi 集成层。
+7. `spintale-ai-console` 默认不直接依赖 `provider`。模型供应商配置、模型能力目录、健康状态应通过 `runtime` 的管理门面或查询服务暴露给 console。
 
-**方式4：独立启动的AI微服务**
-
-```java
-@SpringBootApplication
-public class AiServiceApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(AiServiceApplication.class, args);
-    }
-}
-
-@RestController
-@RequestMapping("/ai")
-class AiController {
-    @Autowired
-    private ChatClient chatClient;
-    
-    @PostMapping("/chat")
-    public String chat(@RequestBody String question) {
-        return chatClient.prompt(question).call().content();
-    }
-    
-    @PostMapping("/rag")
-    public String rag(@RequestBody String question) {
-        // RAG检索增强生成
-        return ragClient.query(question).answer();
-    }
-}
-```
-
-**独立使用的能力清单**：
-
-| 能力 | 是否支持 | 说明 |
-|------|----------|------|
-| Chat对话 | ✅ | ChatClient流畅API |
-| 流式输出 | ✅ | Flux响应式流 |
-| Embedding向量化 | ✅ | EmbeddingClient |
-| RAG检索增强 | ✅ | 完整RAG Pipeline |
-| Agent智能体 | ✅ | Tool、Memory、Workflow |
-| 多Provider切换 | ✅ | OpenAI、Ollama、Azure等 |
-| 分布式追踪 | ✅ | OpenTelemetry |
-| 熔断限流 | ✅ | Resilience4j |
-| 权限管理 | ❌ | 需要console+RuoYi |
-| 操作日志 | ❌ | 需要console+RuoYi |
-| 管理界面 | ❌ | 需要console+RuoYi |
-
-**如果合并会导致**：
-- ❌ 失去脱离RuoYi使用的能力
-- ❌ 其他项目必须引入RuoYi依赖
-- ❌ 违背单一职责原则
-- ❌ 不符合Spring Boot最佳实践
-- ❌ 配置逻辑与业务逻辑耦合
-
-### 3.3 与现有结构对比
-
-| 现有模块 | 现状问题 | 目标模块 | 改进点 |
-|----------|----------|----------|--------|
-| spintale-ai-core | 依赖过重 | spintale-ai-core | 移除Spring Boot等依赖，保留纯接口 |
-| - | 缺失 | spintale-ai-runtime | 新增，统一运行时逻辑 |
-| spintale-ai-api | 定位模糊 | spintale-ai-api | 明确为Client和Advisor层 |
-| spintale-ai-providers | 命名不准确 | spintale-ai-provider | 改为单数形式，更规范 |
-| spintale-ai-retrieval | 命名不准确 | spintale-ai-rag | 改为rag，语义更清晰 |
-| spintale-ai-agent | 依赖retrieval | spintale-ai-agent | 移除对rag的依赖 |
-| - | 缺失 | spintale-ai-console | 新增，RuoYi集成层 |
-
-### 3.4 依赖关系设计
-
-**设计原则**：
-1. **直接依赖**：只声明直接需要的模块（直接调用其类/接口）
-2. **依赖传递**：通过Maven依赖传递机制自动获得间接依赖
-3. **避免跨层**：每层只依赖直接下层，不跨层依赖
-
-**直接依赖关系**（pom.xml中实际声明）：
-
-```text
-【核心抽象层】
-spintale-ai-core -> 无依赖（纯接口，零依赖）
-
-【运行时层】
-spintale-ai-runtime -> spintale-ai-core
-
-【API层】
-spintale-ai-api -> spintale-ai-runtime
-（通过传递获得：spintale-ai-core）
-
-【Provider层】
-spintale-ai-provider -> spintale-ai-api
-（通过传递获得：spintale-ai-runtime, spintale-ai-core）
-
-【业务层】
-spintale-ai-rag -> spintale-ai-api, spintale-ai-provider
-（通过传递获得：spintale-ai-runtime, spintale-ai-core）
-spintale-ai-agent -> spintale-ai-api, spintale-ai-provider
-（通过传递获得：spintale-ai-runtime, spintale-ai-core）
-
-【装配层】
-spintale-ai-starter -> spintale-ai-rag, spintale-ai-agent
-（通过传递获得：spintale-ai-api, spintale-ai-provider, spintale-ai-runtime, spintale-ai-core）
-
-【控制台层】
-spintale-ai-console -> spintale-ai-rag, spintale-ai-agent, spintale-common, spintale-framework
-（通过传递获得：spintale-ai-api, spintale-ai-provider, spintale-ai-runtime, spintale-ai-core）
-
-【应用层】
-spintale-admin -> spintale-framework, spintale-ai-starter, spintale-ai-console
-（通过传递获得：所有AI模块）
-```
-
-**依赖传递示意图**：
-
-```text
-spintale-ai-core (基础)
-    ↑
-spintale-ai-runtime (依赖core)
-    ↑
-spintale-ai-api (依赖runtime → 自动获得core)
-    ↑
-spintale-ai-provider (依赖api → 自动获得runtime+core)
-    ↑
-spintale-ai-rag / spintale-ai-agent (依赖api+provider → 自动获得所有下层)
-    ↑
-spintale-ai-starter / spintale-ai-console (依赖业务层 → 自动获得所有AI能力)
-    ↑
-spintale-admin (依赖starter+console → 自动获得所有模块)
-```
-
-### 3.5 分层架构图
-
-**架构分层**（从下到上，依赖方向向上）：
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  Layer 5: 应用层                                         │
-│  spintale-admin (启动入口)                               │
-└─────────────────────────────────────────────────────────┘
-                          ↓ 依赖
-┌─────────────────────────────────────────────────────────┐
-│  Layer 4: 装配层                                         │
-│  spintale-ai-starter (自动配置)                          │
-│  spintale-ai-console (管理控制台)                        │
-└─────────────────────────────────────────────────────────┘
-                          ↓ 依赖
-┌─────────────────────────────────────────────────────────┐
-│  Layer 3: 业务层                                         │
-│  spintale-ai-rag (RAG能力)                               │
-│  spintale-ai-agent (Agent能力)                           │
-└─────────────────────────────────────────────────────────┘
-                          ↓ 依赖
-┌─────────────────────────────────────────────────────────┐
-│  Layer 2: 适配层                                         │
-│  spintale-ai-provider (模型适配)                         │
-└─────────────────────────────────────────────────────────┘
-                          ↓ 依赖
-┌─────────────────────────────────────────────────────────┐
-│  Layer 1: 能力层                                         │
-│  spintale-ai-api (客户端API)                             │
-│  spintale-ai-runtime (运行时)                            │
-└─────────────────────────────────────────────────────────┘
-                          ↓ 依赖
-┌─────────────────────────────────────────────────────────┐
-│  Layer 0: 核心层                                         │
-│  spintale-ai-core (核心抽象)                             │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Mermaid依赖图**（只显示直接依赖）：
+### 3.3 目标直接依赖图
 
 ```mermaid
 flowchart TB
-    subgraph Layer0["Layer 0: 核心层"]
-        CORE["spintale-ai-core"]
-    end
-    
-    subgraph Layer1["Layer 1: 能力层"]
-        RUNTIME["spintale-ai-runtime"]
-        API["spintale-ai-api"]
-    end
-    
-    subgraph Layer2["Layer 2: 适配层"]
-        PROVIDER["spintale-ai-provider"]
-    end
-    
-    subgraph Layer3["Layer 3: 业务层"]
-        RAG["spintale-ai-rag"]
-        AGENT["spintale-ai-agent"]
-    end
-    
-    subgraph Layer4["Layer 4: 装配层"]
-        STARTER["spintale-ai-starter"]
-        CONSOLE["spintale-ai-console"]
-    end
-    
-    subgraph Layer5["Layer 5: 应用层"]
-        ADMIN["spintale-admin"]
-    end
-    
-    RUNTIME --> CORE
-    API --> RUNTIME
-    PROVIDER --> API
-    
-    RAG --> API
-    RAG --> PROVIDER
-    AGENT --> API
-    AGENT --> PROVIDER
-    
-    STARTER --> RAG
-    STARTER --> AGENT
-    CONSOLE --> RAG
-    CONSOLE --> AGENT
-    CONSOLE --> COMMON["spintale-common"]
-    CONSOLE --> FRAMEWORK["spintale-framework"]
-    
-    ADMIN --> FRAMEWORK
+    ADMIN["spintale-admin"]
+    COMMON["spintale-common"]
+    FRAMEWORK["spintale-framework"]
+    SYSTEM["spintale-system"]
+
+    CONSOLE["spintale-ai-console"]
+    STARTER["spintale-ai-starter"]
+    RAG["spintale-ai-rag"]
+    AGENT["spintale-ai-agent"]
+    PROVIDER["spintale-ai-provider"]
+    RUNTIME["spintale-ai-runtime"]
+    CORE["spintale-ai-core"]
+
     ADMIN --> STARTER
     ADMIN --> CONSOLE
+    ADMIN --> FRAMEWORK
+    ADMIN --> SYSTEM
+
+    CONSOLE --> COMMON
+    CONSOLE --> FRAMEWORK
+    CONSOLE --> SYSTEM
+    CONSOLE --> RUNTIME
+    CONSOLE --> RAG
+    CONSOLE --> AGENT
+
+    STARTER --> RUNTIME
+    STARTER --> PROVIDER
+    STARTER --> RAG
+    STARTER --> AGENT
+
+    RAG --> RUNTIME
+    RAG --> CORE
+
+    AGENT --> RUNTIME
+    AGENT --> CORE
+
+    RUNTIME --> CORE
+    PROVIDER --> CORE
 ```
 
-### 3.6 禁止的依赖关系
+### 3.4 目标文件结构框架
 
-**依赖规则**：
-- 上层可依赖下层，下层不可依赖上层（单向依赖）
-- 同层模块互不依赖（RAG与Agent互不依赖）
-- 避免循环依赖
+项目结构不要继续按“技术杂物包”组织，例如 `api`、`infrastructure`、`common`、`provider/common`。更合理的结构是：Maven 模块按能力边界拆分，模块内部按 `api/domain/application/infrastructure` 或更轻量的 `contract/runtime/adapter` 分层。
+
+推荐主线结构：
 
 ```text
-【核心层禁止】
-spintale-ai-core ❌ 任何框架依赖（Spring Boot、LangChain4j等）
-spintale-ai-core ❌ 任何AI模块依赖
-
-【运行时层禁止】
-spintale-ai-runtime ❌ spintale-ai-api / spintale-ai-provider
-spintale-ai-runtime ❌ spintale-ai-rag / spintale-ai-agent
-spintale-ai-runtime ❌ spintale-ai-starter / spintale-ai-console
-
-【API层禁止】
-spintale-ai-api ❌ spintale-ai-provider
-spintale-ai-api ❌ spintale-ai-rag / spintale-ai-agent
-spintale-ai-api ❌ spintale-ai-starter / spintale-ai-console
-
-【Provider层禁止】
-spintale-ai-provider ❌ spintale-ai-rag / spintale-ai-agent
-spintale-ai-provider ❌ spintale-ai-starter / spintale-ai-console
-
-【业务层禁止】
-spintale-ai-rag ❌ spintale-ai-agent (RAG与Agent互不依赖)
-spintale-ai-rag ❌ spintale-ai-starter / spintale-ai-console
-spintale-ai-agent ❌ spintale-ai-rag (Agent与RAG互不依赖)
-spintale-ai-agent ❌ spintale-ai-starter / spintale-ai-console
-
-【装配层禁止】
-spintale-ai-starter ❌ spintale-ai-console (装配层互不依赖)
-spintale-ai-starter ❌ spintale-common / spintale-framework (不依赖RuoYi)
-spintale-ai-console ❌ spintale-ai-starter (装配层互不依赖)
-spintale-ai-console ❌ spintale-ai-api / spintale-ai-provider (通过业务层间接获得)
-
-【应用层禁止】
-spintale-admin ❌ 直接依赖 spintale-ai-api / spintale-ai-provider / spintale-ai-rag / spintale-ai-agent
-spintale-admin ❌ 直接依赖 spintale-ai-runtime / spintale-ai-core
+SpinTale
+├── spintale-admin
+│   └── 只做启动入口、全局配置、RuoYi 原有 Controller 聚合
+├── spintale-common
+├── spintale-framework
+├── spintale-system
+│
+├── AI 主体层
+│   ├── spintale-ai-core
+│   │   └── AI 稳定抽象和值对象，不放 Spring Bean
+│   ├── spintale-ai-runtime
+│   │   └── AI 统一执行入口、Advisor、Trace、Cost、Policy、Prompt、模型管理门面
+│   ├── spintale-ai-provider
+│   │   └── 模型供应商适配，OpenAI/Ollama/OpenAI-compatible/local
+│   ├── spintale-ai-rag
+│   │   └── 知识库、文档、chunk、retrieval、citation、RAG eval
+│   └── spintale-ai-agent
+│       └── Agent、Tool、Memory、Guardrail、Approval、Checkpoint
+└── AI 集成层
+    ├── spintale-ai-starter
+    │   └── Spring Boot 自动配置和 properties，不放 Web Controller
+    └── spintale-ai-console
+        └── RuoYi AI 管理控制台，Controller/VO/权限/操作日志/Mapper
 ```
 
-### 3.7 Maven依赖配置示例
+目标态不建议新增过多 Maven 模块。Prompt、Guardrail、Evaluation、Workflow、Memory 先作为包存在；只有满足以下条件才拆模块：
 
-**spintale-ai-core (零依赖)**：
-```xml
-<dependencies>
-    <!-- 无任何依赖，纯接口定义 -->
-</dependencies>
-```
+1. 需要独立发布或独立启停。
+2. 依赖非常重，且不是所有使用方都需要。
+3. 需要替换多种实现，例如 Temporal、本地 Workflow、不同向量库。
+4. 被多个上层模块复用，继续放在某个能力模块会形成反向依赖。
 
-**spintale-ai-runtime**：
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-core</artifactId>
-    </dependency>
-</dependencies>
-```
+因此目标态不推荐新增 `spintale-ai-prompt`、`spintale-ai-memory`、`spintale-ai-workflow`。可以预留两个后续可选模块：
 
-**spintale-ai-api**：
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-runtime</artifactId>
-    </dependency>
-    <!-- 通过传递自动获得：spintale-ai-core -->
-</dependencies>
-```
+| 可选模块 | 触发条件 | 直接依赖 |
+| --- | --- | --- |
+| `spintale-ai-evaluation` | RAG/Agent/Prompt 评估开始独立产品化 | `runtime, rag, agent, core` |
+| `spintale-ai-agent-temporal` | Temporal 成为可替换的长任务执行后端 | `agent, runtime, core` |
 
-**spintale-ai-provider**：
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-api</artifactId>
-    </dependency>
-    <!-- 通过传递自动获得：spintale-ai-runtime, spintale-ai-core -->
-</dependencies>
-```
+### 3.5 各模块内部目标包结构
 
-**spintale-ai-rag**：
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-api</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-provider</artifactId>
-    </dependency>
-    <!-- 通过传递自动获得：spintale-ai-runtime, spintale-ai-core -->
-</dependencies>
-```
-
-**spintale-ai-agent**：
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-api</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-provider</artifactId>
-    </dependency>
-    <!-- 通过传递自动获得：spintale-ai-runtime, spintale-ai-core -->
-</dependencies>
-```
-
-**spintale-ai-starter**：
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-rag</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-agent</artifactId>
-    </dependency>
-    <!-- 通过传递自动获得：api, provider, runtime, core -->
-</dependencies>
-```
-
-**spintale-ai-console**：
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-rag</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-agent</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-common</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-framework</artifactId>
-    </dependency>
-    <!-- 通过传递自动获得：api, provider, runtime, core -->
-</dependencies>
-```
-
-**spintale-admin**：
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-framework</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-starter</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.spintale</groupId>
-        <artifactId>spintale-ai-console</artifactId>
-    </dependency>
-    <!-- 通过传递自动获得：所有AI模块 -->
-</dependencies>
-```
-
----
-
-## 4. 框架对比与借鉴
-
-### 4.1 Spring AI 架构分析
+#### `spintale-ai-core`
 
 ```text
-spring-ai-core (核心抽象层)
-├── spring-ai-model (模型API抽象)
-│   ├── ChatModel (对话模型)
-│   ├── EmbeddingModel (嵌入模型)
-│   ├── ImageModel (图像模型)
-│   └── AudioModel (音频模型)
-├── spring-ai-vectorstore (向量存储抽象)
-├── spring-ai-tools (工具调用)
-└── spring-ai-etl (数据处理管道)
-
-spring-ai-integrations (集成层)
-├── spring-ai-openai
-├── spring-ai-anthropic
-├── spring-ai-azure-openai
-└── spring-ai-ollama (20+ Provider集成)
+com.spintale.ai.core
+├── chat
+│   ├── ChatRequest
+│   ├── ChatResponse
+│   ├── ChatMessage
+│   └── ChatOptions
+├── model
+│   ├── ChatModel
+│   ├── EmbeddingModel
+│   ├── RerankModel
+│   └── ModelCapability
+├── tool
+│   ├── ToolDefinition
+│   ├── ToolCall
+│   └── ToolResult
+├── memory
+│   └── MemoryEntry
+├── usage
+│   └── TokenUsage
+└── error
+    └── AiException
 ```
 
-借鉴点：
-1. **统一Model API**: 通过接口隔离不同Provider差异
-2. **Advisors API**: 封装常见生成式AI模式（历史记忆、RAG等）
-3. **ETL Pipeline**: 数据工程管道（Extract-Transform-Load）
-4. **Spring Boot Auto Configuration**: 自动配置和Starter模式
+`core` 只保留稳定契约和值对象。当前 `core.metrics`、`core.observability`、`core.service`、`core.provider` 都不应长期放在 core。
 
-### 4.2 LangChain4j 架构分析
+#### `spintale-ai-runtime`
 
 ```text
-langchain4j-core (核心层，无外部依赖)
-├── model (模型抽象)
-├── memory (对话记忆)
-├── rag (RAG管道)
-└── agent (Agent抽象)
-
-langchain4j (主模块)
-├── chain (链式调用)
-├── document-loaders (文档加载器)
-├── document-parsers (文档解析器)
-└── embeddings (嵌入处理)
-
-langchain4j-integrations (70+集成模块)
-├── langchain4j-open-ai
-├── langchain4j-anthropic
-├── langchain4j-pgvector
-└── langchain4j-milvus
+com.spintale.ai.runtime
+├── client
+│   ├── ChatClient
+│   ├── StreamingChatClient
+│   ├── EmbeddingClient
+│   └── RerankClient
+├── execution
+│   ├── AiExecutor
+│   ├── AiRunContext
+│   ├── AiRunResult
+│   └── AiRunLedger
+├── advisor
+│   ├── Advisor
+│   ├── AdvisorChain
+│   ├── SafetyAdvisor
+│   ├── ObservabilityAdvisor
+│   └── SemanticCacheAdvisor
+├── policy
+│   ├── TimeoutPolicy
+│   ├── RetryPolicy
+│   ├── FallbackPolicy
+│   └── BudgetPolicy
+├── prompt
+│   ├── PromptTemplate
+│   ├── PromptRenderer
+│   └── MessageBuilder
+├── routing
+│   ├── ModelRouter
+│   └── RoutingDecision
+├── model
+│   ├── ModelCatalogQueryService
+│   ├── ProviderStatusService
+│   └── ModelAdminFacade
+└── observability
+    ├── AiSpan
+    ├── CostRecorder
+    └── TraceRecorder
 ```
 
-借鉴点：
-1. **AI Services**: 通过Java接口定义AI服务，自动生成实现
-2. **模块化Provider**: 每个Provider一个独立模块，依赖清晰
-3. **内存管理策略**: 窗口记忆、摘要记忆、令牌窗口等
-4. **RAG Pipeline**: 完整的检索增强生成流程抽象
+`runtime` 是项目后续的核心执行层。ChatClient、Advisor、Pipeline、Facade、Prompt 渲染都归属 runtime。
 
-### 4.3 Semantic Kernel 架构分析
+#### `spintale-ai-provider`
 
 ```text
-semantickernel-api (核心API)
-├── semantic-functions (语义函数)
-├── native-functions (原生函数)
-└── orchestration (编排)
-
-agents (Agent模块)
-└── semantickernel-agents-core
+com.spintale.ai.provider
+├── catalog
+│   ├── ModelCatalog
+│   ├── ProviderCatalog
+│   └── ModelPrice
+├── openai
+│   ├── OpenAiChatModelAdapter
+│   └── OpenAiEmbeddingModelAdapter
+├── compatible
+│   └── OpenAiCompatibleProvider
+├── ollama
+│   └── OllamaModelAdapter
+├── local
+│   └── LocalModelAdapter
+└── langchain4j
+    ├── LangChain4jChatModelAdapter
+    └── LangChain4jMessageMapper
 ```
 
-借鉴点：
-1. **Plugin系统**: 函数的模块化组织
-2. **自动编排**: Planner自动生成执行计划
-3. **函数链**: 语义函数与原生函数的链式组合
+provider 只做“模型 SDK 到 core 抽象”的适配。模型路由归属 `runtime.routing`，因为路由是执行期策略，不是供应商适配。
 
-### 4.4 LlamaIndex 架构分析
+#### `spintale-ai-rag`
 
 ```text
-LlamaIndex
-├── Loading (数据加载)
-│   ├── Documents (文档抽象)
-│   ├── Nodes (节点抽象)
-│   └── Connectors (数据连接器)
-├── Indexing (索引)
-│   ├── VectorStoreIndex
-│   ├── KeywordTableIndex
-│   └── KnowledgeGraphIndex
-├── Storing (存储)
-│   ├── Vector Stores
-│   ├── Document Stores
-│   └── Chat Stores
-├── Querying (查询)
-│   ├── Retrievers (检索器)
-│   ├── Routers (路由器)
-│   ├── Node Postprocessors (后处理器)
-│   └── Response Synthesizers (响应合成器)
-└── Evaluation (评估)
-    ├── Retrieval Evaluation
-    └── Response Evaluation
+com.spintale.ai.rag
+├── knowledge
+│   ├── KnowledgeBase
+│   └── KnowledgeBaseService
+├── document
+│   ├── Document
+│   ├── DocumentStatus
+│   └── DocumentVersion
+├── ingestion
+│   ├── DocumentParser
+│   ├── DocumentCleaner
+│   ├── DocumentChunker
+│   └── IngestionPipeline
+├── chunk
+│   ├── DocumentChunk
+│   └── ChunkMetadata
+├── retrieval
+│   ├── RetrievalService
+│   ├── RetrievalQuery
+│   ├── RetrievalResult
+│   └── RerankService
+├── vector
+│   ├── VectorStore
+│   └── VectorIndexService
+├── citation
+│   ├── Citation
+│   └── CitationResolver
+├── eval
+│   └── RagEvaluationService
+└── adapter
+    └── milvus
+        └── MilvusVectorStore
 ```
 
-借鉴点：
-1. **RAG五阶段**: Loading → Indexing → Storing → Querying → Evaluation
-2. **多索引策略**: 向量索引、关键词索引、图索引可组合
-3. **检索器模式**: 可插拔的检索策略
-4. **后处理器链**: 对检索结果的链式处理
+RAG 不再叫 retrieval，因为 retrieval 只是 RAG 的一个步骤。RAG 内部也不要让 `advisor` 成为主结构；`RagAdvisor` 可以保留，但它只是 runtime advisor 的一个实现，不应代表 RAG 主功能。
 
-### 4.5 Dify 架构分析（Python，借鉴思路）
+#### `spintale-ai-agent`
 
 ```text
-应用层
-├── Workflow (工作流应用)
-├── Chatflow (对话流应用)
-├── Chatbot (聊天机器人)
-└── Agent (智能体)
-
-工作流引擎层
-├── 节点系统
-│   ├── LLM Node
-│   ├── Knowledge Retrieval Node
-│   ├── Tool Node
-│   └── Condition Node
-├── 变量系统
-│   ├── 输入变量
-│   ├── 输出变量
-│   └── 会话变量
-└── 执行引擎
+com.spintale.ai.agent
+├── definition
+│   ├── AgentDefinition
+│   └── AgentProfile
+├── run
+│   ├── AgentRun
+│   ├── AgentStep
+│   └── AgentRunService
+├── react
+│   ├── ReActAgent
+│   └── ReActLoop
+├── tool
+│   ├── ToolRegistry
+│   ├── ToolExecutor
+│   ├── ToolInvocation
+│   ├── ToolRiskLevel
+│   └── builtin
+├── memory
+│   ├── ShortTermMemory
+│   ├── SummaryMemory
+│   └── LongTermMemory
+├── guardrail
+│   ├── InputGuardrail
+│   ├── OutputGuardrail
+│   └── ToolGuardrail
+├── approval
+│   └── HumanApprovalService
+├── checkpoint
+│   └── AgentCheckpoint
+└── workflow
+    ├── WorkflowEngine
+    └── LocalWorkflowEngine
 ```
 
-借鉴点：
-1. **可视化工作流**: 拖拽式工作流设计（后续阶段）
-2. **节点编排**: DAG（有向无环图）执行引擎
-3. **变量作用域**: 输入/输出/环境/会话变量分层
-4. **控制台设计**: 模型管理、知识库、运行历史、成本统计
+Agent 模块不应该直接依赖 RAG。知识库查询应注册成 Tool，例如 `KnowledgeSearchTool`，由 starter 或 console 在运行期组装。
 
-### 4.6 框架对比总结
+Temporal 不建议直接成为主 Agent 模块的必需依赖。目标结构中，Temporal 只能作为 `agent.workflow.temporal` 可选适配；如果它的依赖和部署成本继续变重，再独立为 `spintale-ai-agent-temporal`。
 
-| 维度 | Spring AI | LangChain4j | Semantic Kernel | LlamaIndex | Dify |
-|------|-----------|-------------|-----------------|------------|------|
-| **核心抽象** | Model API | AI Services | Kernel/Plugin | Document/Node | Node |
-| **Provider集成** | Spring Boot Starter | 独立模块 | aiservices模块 | Connectors | 服务层 |
-| **RAG设计** | ETL Pipeline | RAG Pipeline | Text Search | 五阶段RAG | Knowledge Retrieval |
-| **Agent设计** | Tool Calling | Agentic Patterns | Planner | Agent/Tools | Agent App |
-| **配置管理** | Auto Config | 注解+构建器 | Kernel配置 | Settings | 可视化配置 |
+#### `spintale-ai-starter`
 
-### 4.7 SpinTale 采用方式
+```text
+com.spintale.ai.starter
+├── autoconfigure
+│   ├── AiRuntimeAutoConfiguration
+│   ├── AiProviderAutoConfiguration
+│   ├── AiRagAutoConfiguration
+│   ├── AiAgentAutoConfiguration
+│   └── AiObservabilityAutoConfiguration
+├── properties
+│   ├── AiProperties
+│   ├── ProviderProperties
+│   ├── RagProperties
+│   ├── AgentProperties
+│   └── TelemetryProperties
+├── condition
+│   └── ConditionalOnAiEnabled
+└── adapter
+    ├── telemetry
+    ├── cache
+    └── persistence
+```
 
-本项目不照搬这些框架的复杂结构。吸收原则是：
+starter 不放 `web.controller`，也不返回 `AjaxResult`、`ResponseEntity`。所有 HTTP Controller、RuoYi 返回体、权限注解都归属 `spintale-ai-console`。
 
-1. **Spring AI 的装配方式**：借鉴 starter、advisor、runtime 装配思路
-2. **LangChain4j 的模块化**：每个Provider一个独立模块，核心层零依赖
-3. **LlamaIndex 的RAG五阶段**：Loading → Indexing → Storing → Querying → Evaluation
-4. **Dify 的控制台思路**：模型管理、知识库、运行历史、成本统计（不一开始做完整低代码平台）
-5. **RAGFlow 的文档处理**：文档解析、chunk、引用问答
-6. **OpenAI Agents SDK 的安全思路**：Tool权限、Run Trace、Guardrail
-
----
-
-## 5. 核心接口设计
-
-### 5.1 `spintale-admin`
-
-定位：应用启动入口。
-
-职责：
-
-1. Spring Boot 启动。
-2. RuoYi 主后台入口。
-3. 汇总依赖 `spintale-framework`、`spintale-system`、`spintale-ai-console`。
-4. 不直接写 AI 核心逻辑。
-
-禁止：
-
-1. 不直接依赖具体模型 SDK。
-2. 不直接写 RAG/Agent 实现。
-3. 不把 AI provider 配置逻辑放进启动模块。
-
-### 5.2 `spintale-ai-console`
-
-定位：AI 控制台模块。
-
-职责：
-
-1. AI 管理接口。
-2. RuoYi 权限适配。
-3. RuoYi 操作日志适配。
-4. `AjaxResult` 返回体适配。
-5. 模型配置管理。
-6. 知识库管理。
-7. 文档索引任务查看。
-8. Agent 配置管理。
-9. Tool 权限配置。
-10. Run History、Trace、Cost 查询。
-
-包结构建议：
+#### `spintale-ai-console`
 
 ```text
 com.spintale.ai.console
 ├── controller
+│   ├── AiModelController
+│   ├── AiKnowledgeController
+│   ├── AiDocumentController
+│   ├── AiAgentController
+│   ├── AiToolController
+│   ├── AiRunController
+│   └── AiEvalController
 ├── application
+│   ├── ModelAdminService
+│   ├── KnowledgeAdminService
+│   ├── AgentAdminService
+│   └── RunQueryService
+├── domain
+│   └── RuoYi 持久化实体或查询对象
+├── mapper
+│   └── MyBatis Mapper
 ├── dto
+├── vo
 ├── convert
-├── permission
-├── audit
-├── menu
-└── config
+└── permission
 ```
 
-依赖关系：
+console 是唯一可以直接出现 RuoYi 类型的位置，例如 `BaseController`、`AjaxResult`、`@PreAuthorize`、`@Log`、`SysOperLog`。
+
+### 3.6 目标功能归属
+
+| 功能域 | 目标模块 | 目标包 | 可直接依赖 | 禁止直接依赖 |
+| --- | --- | --- | --- | --- |
+| Chat/Streaming Client | `spintale-ai-runtime` | `runtime.client` | `core` | `provider/rag/agent/console` |
+| Advisor/Interceptor | `spintale-ai-runtime` | `runtime.advisor` | `core` | `console/RuoYi` |
+| Prompt 模板与渲染 | `spintale-ai-runtime` | `runtime.prompt` | `core` | `provider/rag/agent` |
+| 模型路由与 fallback | `spintale-ai-runtime` | `runtime.routing`、`runtime.policy` | `core` | `provider` |
+| Token/Cost/Trace | `spintale-ai-runtime` | `runtime.observability` | `core` | `console/RuoYi` |
+| 模型 SDK 适配 | `spintale-ai-provider` | `provider.openai`、`provider.ollama`、`provider.langchain4j` | `core` | `runtime/rag/agent` |
+| 模型能力目录 | `spintale-ai-provider` | `provider.catalog` | `core` | `console/RuoYi` |
+| 知识库 | `spintale-ai-rag` | `rag.knowledge` | `runtime/core` | `agent/provider/console` |
+| 文档解析和索引 | `spintale-ai-rag` | `rag.document`、`rag.ingestion`、`rag.vector` | `runtime/core` | `agent/console` |
+| 检索、重排、引用 | `spintale-ai-rag` | `rag.retrieval`、`rag.citation` | `runtime/core` | `provider/agent` |
+| Agent 执行 | `spintale-ai-agent` | `agent.run`、`agent.react` | `runtime/core` | `rag/provider/console` |
+| Tool/Plugin | `spintale-ai-agent` | `agent.tool` | `runtime/core` | `console/RuoYi` |
+| Memory | `spintale-ai-agent` | `agent.memory` | `runtime/core` | `rag/provider` |
+| Guardrail/Approval/Checkpoint | `spintale-ai-agent` | `agent.guardrail`、`agent.approval`、`agent.checkpoint` | `runtime/core` | `console/RuoYi` |
+| 自动配置 | `spintale-ai-starter` | `starter.autoconfigure` | `runtime/provider/rag/agent` | `console/RuoYi` |
+| 配置属性 | `spintale-ai-starter` | `starter.properties` | 各 AI 能力模块 | `console/RuoYi` |
+| AI 管理接口 | `spintale-ai-console` | `console.controller` | `runtime/rag/agent/RuoYi` | `provider`、被底层模块依赖 |
+| RuoYi 菜单/权限/日志 | `spintale-ai-console` | `console.permission`、`console.application` | `spintale-common/framework/system` | `core/runtime/provider/rag/agent` |
+
+### 3.7 目标直接依赖关系
+
+主线直接依赖保持简单：
 
 ```text
-spintale-ai-console -> spintale-ai-rag, spintale-ai-agent
-spintale-ai-console -> spintale-ai-runtime, spintale-ai-provider
-spintale-ai-console -> spintale-common, spintale-framework, spintale-system (RuoYi集成)
+spintale-ai-core
+└── none
+
+spintale-ai-runtime
+└── spintale-ai-core
+
+spintale-ai-provider
+└── spintale-ai-core
+
+spintale-ai-rag
+├── spintale-ai-core
+└── spintale-ai-runtime
+
+spintale-ai-agent
+├── spintale-ai-core
+└── spintale-ai-runtime
+
+spintale-ai-starter
+├── spintale-ai-runtime
+├── spintale-ai-provider
+├── spintale-ai-rag
+└── spintale-ai-agent
+
+spintale-ai-console
+├── spintale-ai-runtime
+├── spintale-ai-rag
+├── spintale-ai-agent
+├── spintale-common
+├── spintale-framework
+└── spintale-system
+
+spintale-admin
+├── spintale-framework
+├── spintale-system
+├── spintale-ai-starter
+└── spintale-ai-console
 ```
 
-禁止依赖：
+直接依赖目标：
+
+1. `provider` 不依赖 `runtime`，因为 provider 只是能力实现。
+2. `runtime` 不依赖 `provider`，避免 runtime 和 provider 双向感知；由 starter 负责 Bean 装配。
+3. `rag` 不依赖 `provider`，所有模型调用走 runtime。
+4. `agent` 不依赖 `rag`，知识库能力注册成 Tool。
+5. `starter` 不依赖 RuoYi。
+6. `console` 不直接依赖 provider，只通过 runtime 管理门面访问模型配置、模型目录、健康状态。
+7. `console` 不被任何 AI 底层模块依赖。
+8. `admin` 只聚合 starter 和 console，不承载 AI 业务代码。
+
+---
+
+## 4. 模块职责与直接依赖规则
+
+### 4.1 `spintale-ai-core`
+
+定位：AI 最底层抽象。
+
+直接依赖：
 
 ```text
-spintale-ai-console ❌ spintale-ai-starter
+无项目内模块依赖
 ```
 
-说明：console 是业务层入口，直接依赖 RAG 和 Agent 业务模块，同时依赖 runtime 和 provider 提供底层能力。
+允许外部依赖：
 
-### 5.3 `spintale-ai-starter`
+```text
+JDK
+Jackson annotations 或极少量无框架工具
+Lombok provided，可选
+```
 
-定位：Spring Boot 自动配置。
+禁止外部依赖：
+
+```text
+Spring Boot
+Spring Web
+LangChain4j
+OpenTelemetry SDK/exporter
+Resilience4j
+Redis
+Milvus
+RuoYi
+数据库访问框架
+```
+
+职责：
+
+1. `ChatRequest`、`ChatResponse`、`ChatMessage`、`TokenUsage`。
+2. `ChatModel`、`EmbeddingModel`、`RerankModel`、`VectorStore` 等接口。
+3. `ToolDefinition`、`ToolCall`、`MemoryEntry` 基础模型。
+4. AI 异常、枚举、常量。
+
+目标边界：
+
+1. `core` 不包含 Spring、Resilience4j、OpenTelemetry SDK。
+2. 稳定抽象归属 `core`。
+3. `core` 不出现任何 `@Component`、`@Service`、`@Configuration`、`@RestController`。
+
+### 4.2 `spintale-ai-runtime`
+
+定位：AI 统一执行入口。
+
+直接依赖：
+
+```text
+spintale-ai-runtime
+└── spintale-ai-core
+```
+
+职责：
+
+1. `ChatClient`、`EmbeddingClient`、`RerankClient`。
+2. `AiRunContext`、`AiRunResult`。
+3. `AdvisorChain`、`Advisor`、`Interceptor`。
+4. `AiExecutor`、`StreamingExecutor`。
+5. timeout、retry、fallback、budget。
+6. token、cost、latency、trace span、run ledger。
+7. 模型目录、供应商状态、路由策略的查询和管理门面。
+8. 轻量 observability 和 evaluation 基础能力。
+
+目标边界：
+
+1. ChatClient、Advisor、Facade 归属 runtime。
+2. Resilience4j、OpenTelemetry 相关运行时逻辑归属 runtime 或 starter。
+3. Chat、RAG、Agent 统一走 runtime，不各自直接调用 provider SDK。
+
+### 4.3 `spintale-ai-provider`
+
+定位：模型供应商适配。
+
+直接依赖：
+
+```text
+spintale-ai-provider
+└── spintale-ai-core
+```
+
+职责：
+
+1. OpenAI、OpenAI-compatible、Ollama、Azure、本地模型适配。
+2. Embedding provider。
+3. Rerank provider。
+4. Model capability。
+5. Provider health check。
+
+禁止：
+
+```text
+spintale-ai-provider -> spintale-ai-runtime
+spintale-ai-provider -> spintale-ai-rag
+spintale-ai-provider -> spintale-ai-agent
+spintale-ai-provider -> spintale-ai-starter
+spintale-ai-provider -> spintale-ai-console
+spintale-ai-provider -> spintale-ai-api
+```
+
+目标边界：
+
+1. 不依赖 `spintale-ai-api`。
+2. Provider 实现 `core` 中的 `ChatModel`、`EmbeddingModel`、`RerankModel`。
+3. Provider 不知道 RAG、Agent、Console 的存在。
+
+### 4.4 `spintale-ai-rag`
+
+定位：知识库与 RAG。
+
+直接依赖：
+
+```text
+spintale-ai-rag
+├── spintale-ai-core
+└── spintale-ai-runtime
+```
+
+职责：
+
+1. 知识库管理领域模型。
+2. 文档解析、清洗、chunk、metadata。
+3. embedding 入库和索引任务。
+4. 检索、hybrid search、rerank、context build。
+5. citation answer。
+6. RAG trace 和 RAG eval。
+
+禁止：
+
+```text
+spintale-ai-rag -> spintale-ai-provider
+spintale-ai-rag -> spintale-ai-agent
+spintale-ai-rag -> spintale-ai-console
+spintale-ai-rag -> spintale-ai-starter
+spintale-ai-rag -> spintale-ai-api
+```
+
+目标边界：
+
+1. 模块名使用 `spintale-ai-rag`，不再使用 retrieval 表达整个知识库能力。
+2. 不依赖 `spintale-ai-api`。
+3. RAG 使用 runtime 的 client 调用 embedding/rerank/chat，而不是直接依赖 provider。
+4. RAG 能力若要给 Agent 使用，通过 `ToolDefinition` 暴露，不做模块直接依赖。
+
+### 4.5 `spintale-ai-agent`
+
+定位：Agent、Tool、Memory、Workflow。
+
+直接依赖：
+
+```text
+spintale-ai-agent
+├── spintale-ai-core
+└── spintale-ai-runtime
+```
+
+职责：
+
+1. AgentDefinition、AgentRun、AgentStep。
+2. Planner、Executor、Guardrail。
+3. ToolRegistry、ToolExecutor、ToolPermission。
+4. Memory：short-term、summary、long-term。
+5. Workflow：轻量流程编排。
+
+禁止：
+
+```text
+spintale-ai-agent -> spintale-ai-provider
+spintale-ai-agent -> spintale-ai-rag
+spintale-ai-agent -> spintale-ai-console
+spintale-ai-agent -> spintale-ai-starter
+spintale-ai-agent -> spintale-ai-api
+```
+
+目标边界：
+
+1. 不依赖 `spintale-ai-rag`。
+2. 不依赖 `spintale-ai-api`。
+3. Agent 调模型走 runtime。
+4. Agent 使用 RAG 时通过 Tool 调用，由 starter 或 console 在运行期注册工具。
+
+### 4.6 `spintale-ai-starter`
+
+定位：Spring Boot 自动装配。
+
+直接依赖：
+
+```text
+spintale-ai-starter
+├── spintale-ai-runtime
+├── spintale-ai-provider
+├── spintale-ai-rag
+└── spintale-ai-agent
+```
 
 职责：
 
 1. `@AutoConfiguration`。
 2. `@ConfigurationProperties`。
-3. 自动装配 runtime、provider、rag、agent。
-4. 暴露默认 facade。
-5. 提供默认 advisor chain。
-
-依赖关系：
-
-```text
-spintale-ai-starter -> spintale-ai-rag, spintale-ai-agent
-spintale-ai-starter -> spintale-ai-runtime, spintale-ai-provider
-```
+3. 自动装配 provider、runtime、rag、agent。
+4. 注册默认 advisor chain。
+5. 注册默认 Tool、Memory、VectorStore。
 
 禁止：
 
-1. 不使用 `AjaxResult`。
-2. 不使用 `SecurityUtils`。
-3. 不使用 RuoYi `@Log`。
-4. 不写管理端 Controller。
-5. 不依赖 `spintale-common` / `spintale-framework` / `spintale-system`。
-6. 不依赖 `spintale-ai-console`。
+```text
+spintale-ai-starter -> spintale-ai-console
+spintale-ai-starter -> spintale-common
+spintale-ai-starter -> spintale-framework
+spintale-ai-starter -> spintale-system
+spintale-ai-starter -> spintale-ai-api
+```
 
-### 5.4 `spintale-ai-core`
+目标边界：
 
-定位：最底层 AI 抽象。
+1. 不包含 RuoYi 相关 Controller、`AjaxResult`、`SecurityUtils`、`@Log`。
+2. 不再直接依赖 `core`，通过 runtime/provider/rag/agent 的直接依赖即可获得传递依赖。若确实直接使用 core 类型，才显式声明 core。
+3. starter 不做业务管理接口。
+
+### 4.7 `spintale-ai-console`
+
+定位：AI 控制台，RuoYi 集成层。
+
+直接依赖：
+
+```text
+spintale-ai-console
+├── spintale-ai-runtime
+├── spintale-ai-rag
+├── spintale-ai-agent
+├── spintale-common
+├── spintale-framework
+└── spintale-system
+```
 
 职责：
 
-1. Chat 请求/响应模型。
-2. Message、TokenUsage、MediaContent。
-3. AI 异常。
-4. SPI 接口。
-5. Provider 抽象。
-6. 常量和基础工具。
-
-依赖关系：
-
-```text
-spintale-ai-core -> 无依赖（纯POJO + SPI接口）
-```
+1. AI 管理端 Controller。
+2. RuoYi 权限、菜单、日志、返回体适配。
+3. 模型与 Provider 配置管理，通过 runtime 管理门面访问模型目录、路由策略和健康状态。
+4. 知识库管理。
+5. 文档索引任务管理。
+6. Agent/Tool/Memory 管理。
+7. Run history、trace、cost、eval 查询。
 
 禁止：
 
-1. 不依赖 Spring Boot。
-2. 不依赖 RuoYi。
-3. 不依赖 LangChain4j 具体实现。
-4. 不依赖数据库。
-5. 不依赖任何其他 AI 模块。
-
-### 5.5 `spintale-ai-runtime`
-
-定位：AI 调用运行时。
-
-职责：
-
-1. 统一 `traceId`、`runId`。
-2. 统一调用上下文。
-3. 统一 token、cost、latency 记录。
-4. 统一 retry、timeout、fallback、budget。
-5. 统一 streaming 生命周期。
-6. 提供 run ledger。
-7. 后续支持 checkpoint。
-
-依赖关系：
-
 ```text
-spintale-ai-runtime -> spintale-ai-core
+任何 AI 底层模块 -> spintale-ai-console
+spintale-ai-console -> spintale-ai-starter
 ```
 
-禁止依赖：
+目标边界：
 
-```text
-spintale-ai-runtime ❌ spintale-ai-provider / spintale-ai-rag / spintale-ai-agent / spintale-ai-console / spintale-ai-starter
-```
-
-包结构建议：
-
-```text
-com.spintale.ai.runtime
-├── context
-├── execution
-├── advisor
-├── policy
-├── observability
-├── evaluation
-└── checkpoint
-```
-
-### 5.6 `spintale-ai-provider`
-
-定位：模型供应商适配。
-
-职责：
-
-1. OpenAI。
-2. Ollama。
-3. Azure OpenAI。
-4. OpenAI-compatible。
-5. Local Model。
-6. Embedding Model。
-7. Rerank Model。
-8. Model Router。
-9. Provider Capability。
-
-依赖关系：
-
-```text
-spintale-ai-provider -> spintale-ai-core
-```
-
-禁止依赖：
-
-```text
-spintale-ai-provider ❌ spintale-ai-runtime / spintale-ai-rag / spintale-ai-agent / spintale-ai-console / spintale-ai-starter
-```
-
-说明：provider 独立于 runtime，避免循环依赖。模型适配层只依赖核心抽象。
-
-包结构建议：
-
-```text
-com.spintale.ai.provider
-├── registry
-├── routing
-├── capability
-├── openai
-├── ollama
-├── azure
-├── local
-├── embedding
-└── rerank
-```
-
-### 5.7 `spintale-ai-rag`
-
-定位：知识库与 RAG。
-
-职责：
-
-1. 文档上传后的解析。
-2. chunk。
-3. metadata。
-4. embedding。
-5. vector store。
-6. hybrid search。
-7. rerank。
-8. citation。
-9. RAG trace。
-10. RAG eval。
-
-依赖关系：
-
-```text
-spintale-ai-rag -> spintale-ai-runtime, spintale-ai-provider, spintale-ai-core
-```
-
-禁止依赖：
-
-```text
-spintale-ai-rag ❌ spintale-ai-agent / spintale-ai-console / spintale-ai-starter
-```
-
-说明：RAG 需要 provider 进行 embedding 和模型调用，需要 runtime 提供运行时追踪。
-
-包结构建议：
-
-```text
-com.spintale.ai.rag
-├── kb
-├── document
-├── ingestion
-├── chunk
-├── index
-├── retrieval
-├── rerank
-├── answer
-├── citation
-└── eval
-```
-
-### 5.8 `spintale-ai-agent`
-
-定位：Agent 及周边能力。
-
-职责：
-
-1. Agent 定义。
-2. Agent Run。
-3. Agent Step。
-4. Tool Registry。
-5. Tool Execution。
-6. Tool Permission。
-7. Memory。
-8. Workflow。
-9. Guardrail。
-10. Human-in-the-loop。
-
-依赖关系：
-
-```text
-spintale-ai-agent -> spintale-ai-runtime, spintale-ai-provider, spintale-ai-core
-```
-
-禁止依赖：
-
-```text
-spintale-ai-agent ❌ spintale-ai-rag / spintale-ai-console / spintale-ai-starter
-```
-
-说明：Agent 需要 provider 进行模型调用，需要 runtime 提供执行追踪。Agent 与 RAG 互不依赖。
-
-包结构建议：
-
-```text
-com.spintale.ai.agent
-├── definition
-├── runtime
-├── planner
-├── executor
-├── step
-├── tool
-├── memory
-├── workflow
-├── guardrail
-└── store
-```
+1. 所有 RuoYi 强绑定逻辑只允许放在 console。
+2. console 可以直接依赖 Runtime/RAG/Agent，因为它是控制台编排层。
+3. console 不写底层模型调用和 RAG pipeline 实现，只做管理和编排。
+4. console 不直接依赖 Provider；Provider 配置、模型目录、健康状态由 runtime 的管理门面聚合后暴露给 console。
 
 ---
 
-## 6. 推荐依赖关系
+## 5. 目标依赖边界
 
-> **说明**：本章依赖关系与第3.4节保持一致，采用直接依赖+依赖传递机制。
+本节只描述目标态，不描述改造步骤。
 
-### 6.1 分层架构视图
+### 5.1 模块直接依赖矩阵
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│  Layer 5: 应用层 - spintale-admin (启动入口)            │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│  Layer 4: 装配层                                        │
-│  - spintale-ai-starter (自动配置)                       │
-│  - spintale-ai-console (管理控制台)                     │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│  Layer 3: 业务层                                        │
-│  - spintale-ai-rag (RAG能力)                            │
-│  - spintale-ai-agent (Agent能力)                        │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│  Layer 2: 适配层 - spintale-ai-provider (模型适配)     │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│  Layer 1: 能力层                                        │
-│  - spintale-ai-api (客户端API)                          │
-│  - spintale-ai-runtime (运行时)                         │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│  Layer 0: 核心层 - spintale-ai-core (核心抽象)         │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 6.2 总体依赖图（只显示直接依赖）
-
-```mermaid
-flowchart TB
-    subgraph Layer0["Layer 0: 核心层"]
-        CORE["spintale-ai-core"]
-    end
-    
-    subgraph Layer1["Layer 1: 能力层"]
-        RUNTIME["spintale-ai-runtime"]
-        API["spintale-ai-api"]
-    end
-    
-    subgraph Layer2["Layer 2: 适配层"]
-        PROVIDER["spintale-ai-provider"]
-    end
-    
-    subgraph Layer3["Layer 3: 业务层"]
-        RAG["spintale-ai-rag"]
-        AGENT["spintale-ai-agent"]
-    end
-    
-    subgraph Layer4["Layer 4: 装配层"]
-        STARTER["spintale-ai-starter"]
-        CONSOLE["spintale-ai-console"]
-    end
-    
-    subgraph Layer5["Layer 5: 应用层"]
-        ADMIN["spintale-admin"]
-    end
-    
-    RUNTIME --> CORE
-    API --> RUNTIME
-    PROVIDER --> API
-    
-    RAG --> API
-    RAG --> PROVIDER
-    AGENT --> API
-    AGENT --> PROVIDER
-    
-    STARTER --> RAG
-    STARTER --> AGENT
-    CONSOLE --> RAG
-    CONSOLE --> AGENT
-    CONSOLE --> COMMON["spintale-common"]
-    CONSOLE --> FRAMEWORK["spintale-framework"]
-    
-    ADMIN --> FRAMEWORK
-    ADMIN --> STARTER
-    ADMIN --> CONSOLE
-```
-
-### 6.3 直接依赖关系（pom.xml声明）
-
-```text
-【核心抽象层】
-spintale-ai-core -> 无依赖（纯接口，零依赖）
-
-【运行时层】
-spintale-ai-runtime -> spintale-ai-core
-
-【API层】
-spintale-ai-api -> spintale-ai-runtime
-（通过传递获得：spintale-ai-core）
-
-【Provider层】
-spintale-ai-provider -> spintale-ai-api
-（通过传递获得：spintale-ai-runtime, spintale-ai-core）
-
-【业务层】
-spintale-ai-rag -> spintale-ai-api, spintale-ai-provider
-（通过传递获得：spintale-ai-runtime, spintale-ai-core）
-spintale-ai-agent -> spintale-ai-api, spintale-ai-provider
-（通过传递获得：spintale-ai-runtime, spintale-ai-core）
-
-【装配层】
-spintale-ai-starter -> spintale-ai-rag, spintale-ai-agent
-（通过传递获得：spintale-ai-api, spintale-ai-provider, spintale-ai-runtime, spintale-ai-core）
-spintale-ai-console -> spintale-ai-rag, spintale-ai-agent, spintale-common, spintale-framework
-（通过传递获得：spintale-ai-api, spintale-ai-provider, spintale-ai-runtime, spintale-ai-core）
-
-【应用层】
-spintale-admin -> spintale-framework, spintale-ai-starter, spintale-ai-console
-（通过传递获得：所有AI模块）
-```
-
-### 6.4 禁止的依赖关系
-
-```text
-【核心层禁止】
-spintale-ai-core ❌ 任何框架依赖（Spring Boot、LangChain4j等）
-spintale-ai-core ❌ 任何AI模块依赖
-
-【运行时层禁止】
-spintale-ai-runtime ❌ spintale-ai-api / spintale-ai-provider
-spintale-ai-runtime ❌ spintale-ai-rag / spintale-ai-agent
-spintale-ai-runtime ❌ spintale-ai-starter / spintale-ai-console
-
-【API层禁止】
-spintale-ai-api ❌ spintale-ai-provider
-spintale-ai-api ❌ spintale-ai-rag / spintale-ai-agent
-spintale-ai-api ❌ spintale-ai-starter / spintale-ai-console
-
-【Provider层禁止】
-spintale-ai-provider ❌ spintale-ai-rag / spintale-ai-agent
-spintale-ai-provider ❌ spintale-ai-starter / spintale-ai-console
-
-【业务层禁止】
-spintale-ai-rag ❌ spintale-ai-agent (RAG与Agent互不依赖)
-spintale-ai-rag ❌ spintale-ai-starter / spintale-ai-console
-spintale-ai-agent ❌ spintale-ai-rag (Agent与RAG互不依赖)
-spintale-ai-agent ❌ spintale-ai-starter / spintale-ai-console
-
-【装配层禁止】
-spintale-ai-starter ❌ spintale-ai-console (装配层互不依赖)
-spintale-ai-starter ❌ spintale-common / spintale-framework (不依赖RuoYi)
-spintale-ai-console ❌ spintale-ai-starter (装配层互不依赖)
-spintale-ai-console ❌ spintale-ai-api / spintale-ai-provider (通过业务层间接获得)
-
-【应用层禁止】
-spintale-admin ❌ 直接依赖 spintale-ai-api / spintale-ai-provider / spintale-ai-rag / spintale-ai-agent
-spintale-admin ❌ 直接依赖 spintale-ai-runtime / spintale-ai-core
-```
-
-### 6.5 依赖关系核心原则
-
-1. **单向依赖**：上层可依赖下层，下层不可依赖上层
-2. **核心独立**：spintale-ai-core 零依赖，保持纯粹抽象
-3. **业务隔离**：RAG 与 Agent 互不依赖，避免循环
-4. **装配分离**：starter 不依赖 console，保持可复用性
-5. **入口清晰**：admin 只依赖 console 和 starter，不直接接触AI实现
-6. **依赖传递**：通过Maven依赖传递机制自动获得间接依赖，避免重复声明
-
----
-
-## 7. 功能逻辑重构
-
-### 7.1 核心接口设计（借鉴Spring AI + LangChain4j）
-
-```text
-【spintale-ai-core 核心接口】
-
-ChatModel (对话模型接口)
-├── ChatResponse chat(ChatRequest request)
-├── Flux<ChatResponse> stream(ChatRequest request)
-└── Set<ModelCapability> capabilities()
-
-EmbeddingModel (嵌入模型接口)
-├── EmbeddingResponse embed(EmbeddingRequest request)
-└── int dimension()
-
-VectorStore (向量存储接口)
-├── void add(List<Document> documents)
-├── List<Document> search(SearchRequest request)
-└── void delete(List<String> ids)
-
-Tool (工具接口)
-├── String name()
-├── String description()
-├── JsonSchema inputSchema()
-├── JsonSchema outputSchema()
-└── ToolResult execute(ToolInput input)
-```
-
-### 7.2 Chat 调用链（借鉴Spring AI Advisors）
-
-目标调用链：
-
-```text
-Controller
- → Console Application Service
- → AiRuntime
- → Advisor Chain
- → Model Router
- → Provider Adapter
- → LLM
-```
-
-详细流程：
-
-```text
-1. Controller层：接收请求，RuoYi权限校验，AjaxResult封装
-   ↓
-2. Console Application Service：业务编排，参数校验，DTO转换
-   ↓
-3. AiRuntime：创建RunContext，生成traceId/runId，启动追踪
-   ↓
-4. Advisor Chain（责任链模式）：
-   ├── LoggingAdvisor（请求日志）
-   ├── MemoryAdvisor（对话历史）
-   ├── RagAdvisor（知识检索）
-   ├── SafetyAdvisor（内容安全）
-   ├── CacheAdvisor（结果缓存）
-   └── ObservabilityAdvisor（可观测）
-   ↓
-5. Model Router：根据能力、成本、负载选择模型
-   ↓
-6. Provider Adapter：协议转换，SDK调用
-   ↓
-7. LLM Provider：实际模型调用（OpenAI/Ollama/Azure等）
-```
-
-职责拆分：
-
-| 层 | 职责 | 借鉴框架 |
+| 模块 | 允许的项目内直接依赖 | 禁止的项目内直接依赖 |
 | --- | --- | --- |
-| Controller | 参数接收、权限注解、返回体适配 | RuoYi规范 |
-| Console Application Service | 管理端业务编排 | DDD应用服务 |
-| AiRuntime | trace、run context、策略、成本 | Spring AI Runtime |
-| Advisor Chain | memory、rag、safety、cache、observability | Spring AI Advisors |
-| Model Router | 模型选择和 fallback | LangChain4j Router |
-| Provider Adapter | 协议转换 | Spring AI Integration |
+| `spintale-ai-core` | 无 | 所有项目内模块 |
+| `spintale-ai-runtime` | `spintale-ai-core` | `provider/rag/agent/starter/console/RuoYi` |
+| `spintale-ai-provider` | `spintale-ai-core` | `runtime/rag/agent/starter/console/RuoYi` |
+| `spintale-ai-rag` | `spintale-ai-core`、`spintale-ai-runtime` | `provider/agent/starter/console/RuoYi` |
+| `spintale-ai-agent` | `spintale-ai-core`、`spintale-ai-runtime` | `provider/rag/starter/console/RuoYi` |
+| `spintale-ai-starter` | `runtime/provider/rag/agent` | `console/spintale-common/spintale-framework/spintale-system` |
+| `spintale-ai-console` | `runtime/rag/agent/spintale-common/spintale-framework/spintale-system` | `provider/starter` |
+| `spintale-admin` | `spintale-framework/spintale-system/spintale-ai-starter/spintale-ai-console` | AI 底层业务实现类 |
 
-### 7.3 RAG 调用链（借鉴LlamaIndex五阶段）
+### 5.2 外部依赖归属
 
-```text
-KnowledgeBaseController
- → RagApplicationService
- → RAG Pipeline（五阶段）
- → Runtime Trace
-```
+| 外部依赖类型 | 目标归属 | 不应出现的位置 |
+| --- | --- | --- |
+| Spring Boot AutoConfiguration | `spintale-ai-starter` | `core/provider/rag/agent` 的核心包 |
+| Spring Web Controller | `spintale-ai-console` | `starter/core/runtime/provider/rag/agent` |
+| RuoYi `AjaxResult/BaseController/@Log/@PreAuthorize` | `spintale-ai-console` | 所有 AI 底层模块 |
+| LangChain4j SDK | `spintale-ai-provider`，少量可在 `rag` 文档处理适配中使用 | `core` 公共接口 |
+| OpenAI/Ollama SDK | `spintale-ai-provider` | `runtime/rag/agent/console` |
+| Resilience4j | `spintale-ai-runtime` 或 `starter` 配置层 | `core` |
+| OpenTelemetry SDK/exporter | `spintale-ai-starter` | `core` |
+| OpenTelemetry API | `spintale-ai-runtime` | `core` 尽量不放 |
+| Caffeine | `spintale-ai-runtime` 或 `agent.memory` 实现 | `core` |
+| Redisson | `starter` 的持久化适配，或后续独立 redis adapter | `core/agent` 核心接口 |
+| Temporal | `agent.workflow.temporal` 可选适配，或后续 `spintale-ai-agent-temporal` | `agent` 主流程必需依赖 |
+| Milvus SDK | `spintale-ai-rag.adapter.milvus` | `core/runtime/agent/console` |
+| MyBatis Mapper | `spintale-ai-console` 或 RAG/Agent 自己的持久化实现包 | `core` |
 
-RAG 五阶段设计（借鉴LlamaIndex）：
-
-```text
-【阶段一：Loading】
-DocumentLoader.load(source) → List<Document>
-├── FileLoader (PDF/Word/Markdown/Text)
-├── WebLoader (URL抓取)
-└── DatabaseLoader (数据库导入)
-
-【阶段二：Indexing】
-DocumentParser.parse(document) → List<Node>
-├── PDFParser (pdf解析)
-├── MarkdownParser (md解析)
-└── HtmlParser (html解析)
-   ↓
-DocumentSplitter.split(nodes) → List<Chunk>
-├── RecursiveCharacterTextSplitter (递归分割)
-├── SemanticSplitter (语义分割)
-└── SentenceSplitter (句子分割)
-   ↓
-MetadataEnricher.enrich(chunks) → List<Chunk>
-├── 添加文档元数据
-├── 添加位置信息
-└── 添加时间戳
-
-【阶段三：Storing】
-EmbeddingModel.embed(chunks) → List<Embedding>
-├── 调用Provider的embedding接口
-└── 支持批量嵌入
-   ↓
-VectorStore.add(embeddings) → void
-├── Milvus/PgVector/Qdrant
-└── 支持元数据过滤
-
-【阶段四：Querying】
-QueryRewriter.rewrite(query) → Query
-├── HyDE (假设文档嵌入)
-├── MultiQuery (多查询扩展)
-└── QueryDecomposition (查询分解)
-   ↓
-Retriever.retrieve(query) → List<Node>
-├── VectorRetriever (向量检索)
-├── KeywordRetriever (关键词检索)
-├── HybridRetriever (混合检索)
-└── RerankRetriever (重排序)
-   ↓
-ResponseSynthesizer.synthesize(query, nodes) → Answer
-├── SimpleResponse (简单拼接)
-├── RefineResponse (迭代精炼)
-└── TreeSummarize (树状摘要)
-
-【阶段五：Evaluation】
-RAGEvaluator.evaluate(query, answer, nodes) → EvalResult
-├── RetrievalEvaluator (检索质量：Recall@K, MRR)
-├── ResponseEvaluator (回答质量：Groundedness, Relevance)
-└── CitationEvaluator (引用准确性)
-```
-
-RAG Pipeline 组装示例：
+### 5.3 功能跨模块关系
 
 ```text
-IngestionPipeline:
-Source → Parser → Splitter → MetadataEnricher → Embedder → VectorStore
+普通 Chat:
+console/admin -> runtime -> core(ChatModel) -> provider implementation
 
-RetrievalPipeline:
-Query → QueryRewriter → Retriever → Reranker → ContextBuilder
+RAG 问答:
+console/admin -> rag -> runtime -> core(ChatModel/EmbeddingModel/RerankModel) -> provider implementation
 
-AnswerPipeline:
-Context → PromptBuilder → ChatModel → CitationExtractor → Answer
+Agent 执行:
+console/admin -> agent -> runtime -> core(ChatModel/ToolDefinition) -> provider implementation
+
+Agent 使用知识库:
+agent -> ToolDefinition("knowledge_search") -> runtime tool execution -> rag service
+
+模型配置管理:
+console -> runtime model admin facade -> provider catalog / routing policy
+
+运行日志:
+runtime 生成 run/span/cost
+console 只查询和展示 run/span/cost
 ```
 
-### 7.4 Agent 调用链（借鉴LangChain4j + Semantic Kernel）
+关键点：
 
-```text
-AgentController
- → AgentApplicationService
- → AgentRuntime
- → Planner
- → Tool Executor
- → Observation
- → Final Answer
-```
+1. `runtime` 面向 `core` 抽象调用模型，不直接依赖 provider 模块。
+2. `starter` 负责把 provider 实现装配给 runtime。
+3. `rag` 和 `agent` 都可以使用 runtime，但二者不互相直接依赖。
+4. `console` 可以编排 Runtime、RAG、Agent，并通过 runtime 查询模型目录和供应商状态；底层模块不能依赖 console。
+5. `admin` 是应用启动和聚合入口，不承载 AI 能力实现。
 
-详细流程：
+---
 
-```text
-1. Agent定义阶段：
-   AgentDefinition
-   ├── name, description, goal
-   ├── List<Tool> tools (可用工具列表)
-   ├── Memory memory (对话记忆)
-   ├── PromptTemplate systemPrompt (系统提示词)
-   └── AgentConfig config (配置)
-   
-2. Agent执行阶段：
-   AgentRun run = agentRuntime.createRun(agentId, input)
-   ├── 创建runId, traceId
-   ├── 初始化memory
-   └── 记录开始状态
-   
-3. 规划阶段（借鉴Semantic Kernel Planner）：
-   Plan plan = planner.plan(goal, tools)
-   ├── ReActPlanner (推理行动规划)
-   ├── CoTPlanner (思维链规划)
-   └── CustomPlanner (自定义规划)
-   
-4. 执行循环：
-   while (!plan.isComplete()) {
-       Step step = plan.nextStep()
-       ├── Tool tool = selectTool(step)
-       ├── ToolInput input = prepareInput(step)
-       ├── ToolResult result = executeTool(tool, input)
-       │   ├── 权限检查 (ToolPermissionChecker)
-       │   ├── 风险评估 (RiskLevel: L0/L1/L2/L3)
-       │   ├── 审计记录 (ToolCallAudit)
-       │   └── 执行工具
-       ├── observation = recordObservation(result)
-       └── plan.update(observation)
-   }
-   
-5. 记录追踪：
-   AgentStep (每一步执行)
-   ├── stepId, runId
-   ├── thought (思考过程)
-   ├── toolName, toolInput, toolOutput
-   ├── observation (观察结果)
-   └── tokenUsage, latency
-   
-6. 生成最终答案：
-   Answer answer = synthesizer.synthesize(steps)
-   ├── 从所有步骤中提取关键信息
-   ├── 调用LLM生成总结
-   └── 返回给用户
-```
+## 6. 外部 AI 框架优缺点与采纳策略
 
-Tool 风险等级（借鉴OpenAI Agents SDK）：
+本节只提炼对 SpinTale 有用的结构设计，不建议直接照搬任何一个框架。当前项目是 RuoYi 后台系统加 Java AI 能力，目标应是“可嵌入、可治理、可观测、可渐进升级”，而不是一次性做成完整 LLMOps 平台。
 
-| 等级 | 说明 | 执行策略 | 示例 |
+### 6.1 Spring AI
+
+优点：
+
+1. 与 Spring Boot、AutoConfiguration、Actuator、Micrometer 体系天然适配。
+2. `ChatClient`、Advisor、VectorStore、ETL、Observability 这些抽象适合 Java 后台系统。
+3. 对多模型供应商和向量库有统一接入方式，适合做 starter 自动装配。
+
+缺点：
+
+1. API 仍在快速演进，直接把 Spring AI 类型暴露到业务接口会提高后续升级成本。
+2. 过度依赖 Spring 上下文，容易让 core 被 `@Component`、`@Configuration`、starter 配置污染。
+3. RAG 的文档解析、复杂 chunk、引用可视化、评估闭环仍需要项目自己建设。
+
+SpinTale 采纳策略：
+
+1. 采纳 `ChatClient + AdvisorChain + Observability` 思路，落到 `spintale-ai-runtime`。
+2. 采纳 Spring Boot 自动装配方式，落到 `spintale-ai-starter`。
+3. 不把 Spring AI 类型放进 `spintale-ai-core` 的公共接口。
+4. 若未来直接引入 Spring AI，应放在 `runtime/starter/provider`，不要下沉到 core。
+
+### 6.2 LangChain4j
+
+优点：
+
+1. Java 生态更贴近当前技术栈，AI Service、Tool、Memory、RAG 抽象成熟。
+2. 供应商适配多，适合作为部分 provider 的底层实现参考。
+3. 对“Java 方法暴露为工具调用”的体验较好，适合借鉴 Tool 定义。
+
+缺点：
+
+1. 如果业务层直接依赖 LangChain4j 注解和类型，会被框架模型锁死。
+2. Agent、RAG、Memory 组合容易越写越厚，模块边界容易退化为一个大 service。
+3. 成本、审计、权限、敏感信息脱敏、企业级运行日志仍需要项目自建。
+
+SpinTale 采纳策略：
+
+1. `spintale-ai-provider` 可以内部使用 LangChain4j 适配模型，但不能向 core/runtime 泄漏 LangChain4j 类型。
+2. 借鉴 `AI Service` 的声明式接口，但 SpinTale 自己定义 `ToolDefinition`、`ToolExecutor`、`AgentDefinition`。
+3. Tool 必须补充 RuoYi 场景需要的 `permissionCode`、`riskLevel`、`auditRequired`、`humanApprovalRequired`。
+
+### 6.3 Semantic Kernel
+
+优点：
+
+1. Kernel、Plugin、Function 的分层清晰，适合企业系统把已有服务封装成 AI 工具。
+2. Plugin 可以承接权限、参数 schema、函数描述、执行上下文。
+3. Planner 和 Agent 的概念适合复杂任务编排的长期方向。
+
+缺点：
+
+1. Java 不是最强势生态，直接引入收益不如借鉴结构。
+2. Planner/Plugin 一次性做全会显著增加复杂度。
+3. 对 RuoYi 权限、审计、菜单、租户隔离仍需要本地化改造。
+
+SpinTale 采纳策略：
+
+1. 采纳 Plugin/Function 思路，建立 `ToolPlugin`、`ToolDefinition`、`ToolInvocation`。
+2. Agent 初期不要做复杂 Planner，先做单 Agent + Tool Loop + 审批。
+3. 高风险工具必须经过 RuoYi 权限校验和人工确认。
+
+### 6.4 LlamaIndex
+
+优点：
+
+1. 文档 ingestion、metadata、index、retriever、rerank、response synthesis 的链路完整。
+2. 对 RAG 评估、观测、数据源连接、文档解析的产品化经验丰富。
+3. 强调数据和索引生命周期，适合知识库长期治理。
+
+缺点：
+
+1. Python 生态为主，直接集成到 Java/RuoYi 项目会增加运行时复杂度。
+2. 抽象非常丰富，直接照搬会让当前项目模块过重。
+3. 文档解析、索引、评估如果同时铺开，容易失控。
+
+SpinTale 采纳策略：
+
+1. 借鉴 ingestion pipeline：`parse -> clean -> chunk -> enrich metadata -> embed -> index`。
+2. RAG chunk 必须保存 `sourceId`、`docVersion`、`pageNo`、`sectionPath`、`checksum`、`tokenCount`。
+3. 先把 `spintale-ai-rag` 做成可追踪、可重建、可评估的知识库模块，再考虑复杂 workflow。
+
+### 6.5 Haystack
+
+优点：
+
+1. Component + Pipeline 的数据流边界清晰，Retriever、Generator、Evaluator 分离明确。
+2. 对 RAG pipeline 和组件级评估支持较好。
+3. 适合借鉴“每个节点输入输出可观测”的设计。
+
+缺点：
+
+1. Python 生态为主，不适合作为 Java 主工程的直接依赖。
+2. 可视化 pipeline 和组件市场不是当前目标主结构。
+3. 过早引入图式 pipeline 会增加管理界面和调试复杂度。
+
+SpinTale 采纳策略：
+
+1. RAG 内部按 pipeline 步骤定义组件接口，但不把复杂可视化编排作为主结构。
+2. 每次 RAG 查询记录 `query -> rewrite -> retrieve -> rerank -> context build -> generate -> citation`。
+3. Evaluation 先支持 Retriever 命中率、答案引用覆盖率、无引用回答率，再扩展模型评分。
+
+### 6.6 Dify
+
+优点：
+
+1. 控制台产品能力强：应用、知识库、模型供应商、工作流、插件、日志、反馈闭环完整。
+2. 对非开发用户友好，适合作为 Console 功能规划参考。
+3. 日志里包含模型、token、耗时、错误、用户反馈，适合运营排查。
+
+缺点：
+
+1. 它是完整 LLMOps 平台，不是可直接嵌入 RuoYi 的 Maven 模块。
+2. 工作流、插件市场、多应用空间一次性照搬会超过当前项目承载能力。
+3. 若完全模仿，会导致 `spintale-ai-console` 变成庞大低代码平台。
+
+SpinTale 采纳策略：
+
+1. Console 先做企业后台必需功能：模型配置、知识库、Agent、工具、运行日志、成本统计、反馈。
+2. 暂不做复杂低代码 Workflow，先以配置化 Agent 和 RAG 应用为主。
+3. 所有 Console 能力放在 `spintale-ai-console`，不要进入 `starter` 或能力模块。
+
+### 6.7 RAGFlow
+
+优点：
+
+1. 深度文档理解、OCR、版面识别、表格处理、可视化 chunk、引用溯源是 RAG 系统的核心竞争力。
+2. 强调从复杂非结构化文档中获得高质量 chunk。
+3. citation 和 chunk 可解释性适合企业知识库场景。
+
+缺点：
+
+1. 系统较重，解析模型、OCR、队列、存储、索引链路都更复杂。
+2. 对当前项目而言，直接追求深度文档理解会拖慢架构治理。
+3. 私有化部署和资源要求更高。
+
+SpinTale 采纳策略：
+
+1. RAG 目标主结构支持 Text、Markdown、Word、PDF 的基础解析和 chunk 可追踪。
+2. OCR、版面解析、表格结构化作为可选 adapter，不进入 RAG 核心接口。
+3. 回答必须支持 citation，引用至少能定位到文档、版本、页码、chunk。
+
+### 6.8 OpenAI Agents SDK
+
+优点：
+
+1. Agent、Tool、Handoff、Guardrail、Tracing 是一等概念。
+2. 运行轨迹清晰，能记录模型调用、工具调用、handoff、guardrail、自定义事件。
+3. Guardrail 设计适合生产环境控制输入、输出和工具调用风险。
+
+缺点：
+
+1. 与 OpenAI 生态绑定更强，且主要是 Python/TypeScript SDK。
+2. 多 Agent、handoff、guardrail 全量引入会显著增加调试成本。
+3. 企业权限、审计、菜单、数据权限仍需要结合 RuoYi 自建。
+
+SpinTale 采纳策略：
+
+1. `spintale-ai-agent` 建立 `AgentRun`、`AgentStep`、`ToolCall`、`Handoff` 的运行记录模型。
+2. `spintale-ai-runtime` 提供统一 trace/span/run ledger，不让 Agent 自己散落日志。
+3. Guardrail 先落地三类：输入脱敏、工具调用权限、输出合规检查。
+
+### 6.9 LangGraph
+
+优点：
+
+1. durable execution、checkpoint、human-in-the-loop、memory、故障恢复是长任务 Agent 的关键能力。
+2. 状态图适合明确步骤、可暂停、可恢复、需人工审批的任务。
+3. 对复杂多步骤任务比普通 agent loop 更可控。
+
+缺点：
+
+1. Python/JavaScript 生态为主，不适合直接引入 Java 主工程。
+2. 状态图会带来额外建模成本，简单问答和普通 RAG 不需要。
+3. checkpoint、恢复、人工审批如果没有控制台配合，体验会很差。
+
+SpinTale 采纳策略：
+
+1. 短期不做完整 Graph 引擎，只预留 `AgentCheckpoint`、`WorkflowState`、`HumanApproval` 数据模型。
+2. 高风险工具调用、长耗时任务、外部系统写操作才进入 checkpoint 流程。
+3. 后续如果做 Workflow，也应放在 `spintale-ai-agent`，由 `spintale-ai-console` 管理，不影响 core/provider/rag。
+
+### 6.10 框架经验到 SpinTale 模块的映射
+
+| SpinTale 模块 | 借鉴对象 | 应采纳 | 应避免 |
 | --- | --- | --- | --- |
-| L0 | 只读工具 | 自动执行 | web_search, file_read |
-| L1 | 低风险写入 | 自动执行并记录 | file_write, email_send |
-| L2 | 业务写入 | 权限校验和审计 | order_create, user_update |
-| L3 | 删除/外部影响 | 人工确认 | user_delete, payment_process |
+| `spintale-ai-core` | Spring AI / LangChain4j 的底层模型抽象 | Chat、Embedding、Rerank、Tool、Memory 的稳定接口 | Spring、LangChain4j、RuoYi 类型进入 core |
+| `spintale-ai-runtime` | Spring AI ChatClient、OpenAI Agents Tracing | 统一执行、Advisor、Trace、Cost、Retry、Fallback、Budget | 每个业务模块各自调用 provider SDK |
+| `spintale-ai-provider` | LangChain4j Provider、Spring AI Model | 多供应商适配、能力目录、健康检查 | provider 反向依赖 RAG/Agent/Runtime |
+| `spintale-ai-rag` | LlamaIndex、Haystack、RAGFlow | ingestion pipeline、metadata、hybrid search、rerank、citation、eval | 一开始就做复杂 OCR/低代码 pipeline |
+| `spintale-ai-agent` | Semantic Kernel、OpenAI Agents SDK、LangGraph | Tool Plugin、Guardrail、AgentRun、Step Trace、Human Approval、Checkpoint | Agent 直接依赖 RAG 或直接写业务数据 |
+| `spintale-ai-console` | Dify、RAGFlow Console | 模型、知识库、Agent、工具、日志、反馈、成本、评估界面 | 把 console 能力塞进 starter |
+| `spintale-ai-starter` | Spring Boot Starter | 自动装配、条件配置、Bean 注册 | 承载业务编排和 RuoYi 控制器 |
 
-Agent 必须记录：
+### 6.11 对目标结构的补强
 
-```text
-AgentRun (一次完整执行)
-├── runId, agentId, userId, traceId
-├── input, output, status
-├── startTime, endTime, duration
-├── totalTokens, totalCost
-└── List<AgentStep> steps
+结合这些框架的经验，目标结构应满足：
 
-AgentStep (单步执行)
-├── stepId, runId, stepNumber
-├── thought (思考过程)
-├── action (工具调用)
-│   ├── toolName
-│   ├── toolInput
-│   └── toolOutput
-├── observation (执行结果)
-└── tokens, latency
+1. `runtime` 是唯一执行入口，trace、cost、retry、fallback、stream、guardrail 都围绕它收敛。
+2. `provider` 是模型适配层，负责供应商、模型能力、价格、上下文长度、流式支持和健康状态。
+3. `rag` 是知识库能力层，负责文档生命周期、chunk 元数据、检索链路、引用溯源和 RAG 评估。
+4. `agent` 是智能体能力层，负责 Tool schema、权限、风险等级、人工审批、运行轨迹和 checkpoint。
+5. `console` 是 RuoYi AI 管理控制台，负责模型、知识库、Agent、日志、反馈、成本、评估、告警。
+6. `starter` 是装配层，只负责条件配置和 Bean 注册，不承载 RuoYi 控制器或业务编排。
 
-ToolCall (工具调用审计)
-├── callId, runId, stepId
-├── toolName, toolVersion
-├── input, output, status
-├── permission, riskLevel
-├── caller, timestamp
-└── duration, errorMessage
-```
+参考来源：
 
-### 7.5 Memory 设计（借鉴LangChain4j）
-
-```text
-Memory (对话记忆抽象)
-├── void add(Message message)
-├── List<Message> get(int maxTokens)
-└── void clear()
-
-实现策略：
-├── MessageWindowMemory (消息窗口)
-│   └── 保留最近N条消息
-├── TokenWindowMemory (令牌窗口)
-│   └── 限制总token数，超出则淘汰旧消息
-├── SummarizingMemory (摘要记忆)
-│   └── 对话过长时自动生成摘要
-├── ConversationTokenWindowMemory (组合策略)
-│   └── LangChain4j默认策略
-└── PersistentMemory (持久化记忆)
-    └── 存储到数据库，支持跨会话
-```
-
-### 7.6 Advisor 设计（借鉴Spring AI）
-
-```text
-Advisor (拦截器接口)
-├── String getName()
-├── int getOrder() (执行顺序)
-├── AdvisedRequest before(AdvisedRequest request)
-└── AdvisedResponse after(AdvisedResponse response)
-
-内置Advisor：
-├── LoggingAdvisor (请求响应日志)
-├── MemoryAdvisor (对话历史管理)
-├── RagAdvisor (知识检索增强)
-├── SafetyAdvisor (内容安全检查)
-├── CacheAdvisor (结果缓存)
-├── RateLimitAdvisor (限流控制)
-├── BudgetAdvisor (预算控制)
-└── ObservabilityAdvisor (可观测埋点)
-
-执行流程（责任链）：
-request → Advisor1 → Advisor2 → ... → AdvisorN → model
-                                           ↓
-response ← Advisor1 ← Advisor2 ← ... ← AdvisorN ← result
-```
-
-### 7.7 Provider 设计（借鉴Spring AI Integration）
-
-```text
-ProviderAdapter (统一适配接口)
-├── String getName() (provider名称)
-├── Set<ModelCapability> capabilities() (能力集)
-├── ChatModel getChatModel(ModelConfig config)
-├── EmbeddingModel getEmbeddingModel(ModelConfig config)
-└── boolean healthCheck() (健康检查)
-
-具体实现：
-├── OpenAiAdapter (OpenAI适配)
-├── AzureOpenAiAdapter (Azure适配)
-├── OllamaAdapter (Ollama本地模型)
-├── AnthropicAdapter (Claude适配)
-├── GeminiAdapter (Google Gemini)
-└── LocalModelAdapter (本地模型)
-
-ModelCapability (模型能力集)
-├── CHAT (对话)
-├── STREAMING (流式)
-├── TOOL_CALLING (工具调用)
-├── STRUCTURED_OUTPUT (结构化输出)
-├── VISION (视觉)
-├── EMBEDDING (嵌入)
-├── RERANK (重排)
-└── maxContextTokens (最大上下文长度)
-```
-
-### 7.8 配置设计（借鉴Spring Boot + LangChain4j）
-
-```text
-配置层次（优先级从高到低）：
-1. 代码配置（Builder模式）
-2. 请求级配置（单次调用覆盖）
-3. 应用配置（application.yml）
-4. 默认配置（starter默认值）
-
-配置示例（application.yml）：
-spintale:
-  ai:
-    default-provider: openai
-    providers:
-      openai:
-        api-key: ${OPENAI_API_KEY}
-        base-url: https://api.openai.com/v1
-        default-model: gpt-4-turbo-preview
-        timeout: 60000
-        retry:
-          max-attempts: 3
-          backoff: exponential
-      ollama:
-        base-url: http://localhost:11434
-        default-model: llama2
-    vector-store:
-      type: milvus
-      host: localhost
-      port: 19530
-    rag:
-      chunk-size: 500
-      chunk-overlap: 50
-      top-k: 5
-    agent:
-      max-steps: 10
-      timeout: 300000
-```
+1. Spring AI Reference: https://docs.spring.io/spring-ai/reference/
+2. LangChain4j Documentation: https://docs.langchain4j.dev/
+3. Microsoft Semantic Kernel Documentation: https://learn.microsoft.com/en-us/semantic-kernel/
+4. LlamaIndex Documentation: https://docs.llamaindex.ai/
+5. Haystack Documentation: https://docs.haystack.deepset.ai/
+6. Dify Documentation: https://docs.dify.ai/
+7. RAGFlow GitHub: https://github.com/infiniflow/ragflow
+8. OpenAI Agents SDK: https://openai.github.io/openai-agents-python/
+9. LangGraph Documentation: https://docs.langchain.com/oss/python/langgraph/
 
 ---
 
-## 8. 后续详细升级方案
+## 7. 目标功能逻辑
 
-### 8.0 设计原则（基于框架对比总结）
+### 7.1 Runtime 统一执行
 
-> **说明**：本节从框架对比角度总结技术设计原则，与第2.2节的架构设计原则相互补充。
+缺点：
 
-基于对Spring AI、LangChain4j、Semantic Kernel、LlamaIndex、Dify等框架的调研，总结以下设计原则：
+1. 当前缺少统一 run context。
+2. Chat、RAG、Agent 调用链分散。
+3. 运行日志、成本、trace、错误没有统一模型。
 
-```text
-【原则1：分层抽象】
-核心层（core）只定义接口，零依赖，不引入任何框架
-Provider层实现接口，每个Provider一个独立模块
-业务层（rag/agent）基于核心抽象构建
-装配层（starter/console）负责自动配置和业务集成
-
-【原则2：统一接口】
-借鉴Spring AI的Model API设计：
-- ChatModel接口统一不同Provider的对话能力
-- EmbeddingModel接口统一嵌入能力
-- VectorStore接口统一向量存储
-- Tool接口统一工具定义
-
-【原则3：Pipeline模式】
-借鉴LlamaIndex的五阶段设计：
-- RAG采用Loading → Indexing → Storing → Querying → Evaluation
-- 每个阶段可插拔，支持自定义实现
-- 通过Pipeline组装器灵活组合
-
-【原则4：责任链模式】
-借鉴Spring AI的Advisors设计：
-- Advisor拦截器在调用前后插入通用逻辑
-- Memory、RAG、Safety、Cache等都可抽象为Advisor
-- 通过order控制执行顺序
-
-【原则5：策略模式】
-借鉴LangChain4j的多样化策略：
-- Memory策略：窗口、摘要、持久化等
-- Retriever策略：向量、关键词、混合、重排等
-- Planner策略：ReAct、CoT、自定义等
-- Router策略：能力、成本、负载等
-
-【原则6：模块化Provider】
-借鉴LangChain4j的模块化设计：
-- 每个Provider一个独立Maven模块
-- 核心不依赖具体Provider实现
-- 按需引入Provider依赖
-
-【原则7：配置分层】
-借鉴Spring Boot的配置优先级：
-代码配置 > 请求配置 > 应用配置 > 默认配置
-支持热更新、动态切换
-
-【原则8：可观测优先】
-借鉴OpenAI Agents SDK的Tracing设计：
-- 每次调用生成traceId/runId
-- 记录token、cost、latency
-- 支持分布式追踪
-- 提供运行历史查询
-```
-
-### 8.1 阶段一：结构止血与命名统一
-
-目标：先把工程结构讲清楚，避免后续继续耦合。
-
-周期建议：1-2 周。
-
-任务：
-
-1. 确定最终 AI 模块命名：
-   - `spintale-ai-console`
-   - `spintale-ai-runtime`
-   - `spintale-ai-provider`
-   - `spintale-ai-rag`
-   - `spintale-ai-agent`
-   - `spintale-ai-starter`
-   - `spintale-ai-core`
-2. 将现有 `spintale-ai-retrieval` 规划为后续 `spintale-ai-rag`。
-3. 将现有 `spintale-ai-providers` 规划为后续 `spintale-ai-provider`。
-4. 明确 `spintale-admin` 只作为启动入口。
-5. 明确 `spintale-ai-console` 作为 RuoYi 集成层。
-6. starter 去除所有 RuoYi 依赖。
-7. API 层移除 provider 具体实现。
-8. 建立依赖方向检查规则。
-
-交付物：
-
-1. 模块命名规范。
-2. Maven 模块结构。
-3. 依赖方向图。
-4. 编译通过。
-5. 基础 smoke test。
-
-验收标准：
-
-1. `spintale-ai-core` 不依赖 Spring Boot 和 RuoYi。
-2. `spintale-ai-starter` 不依赖 `spintale-common/framework/system`。
-3. `spintale-admin` 不直接调用 provider SDK。
-4. AI 子模块无循环依赖。
-
----
-
-## 8.2 阶段二：AI Runtime 抽离
-
-目标：所有 AI 调用都有统一运行上下文。
-
-周期建议：2-3 周。
-
-任务：
+升级：
 
 1. 新增 `AiRunContext`。
-2. 新增 `AiRunResult`。
-3. 新增 `AiExecutor`。
-4. 新增 `StreamingExecutor`。
-5. 新增 `AiExecutionPolicy`。
-6. 统一 traceId/runId。
-7. 统一 token usage。
-8. 统一 cost 估算。
-9. 统一 timeout/retry/fallback。
-10. 将 Chat、RAG、Agent 调用逐步接入 runtime。
+2. 新增 `AiRunLedger`。
+3. 新增 `AiExecutor`、`StreamingExecutor`。
+4. 新增 `AdvisorChain`。
+5. 新增 `RetryPolicy`、`TimeoutPolicy`、`FallbackPolicy`、`BudgetPolicy`。
 
-核心对象：
+验收：
 
-```text
-AiRunContext
-- traceId
-- runId
-- userId
-- tenantId
-- conversationId
-- requestType
-- model
-- provider
-- metadata
+1. 所有 AI 调用都有 `runId` 和 `traceId`。
+2. 所有 provider 调用都有 token/cost/latency。
+3. RAG 和 Agent 都能写入 span。
 
-AiExecutionPolicy
-- timeoutMs
-- maxRetries
-- fallbackModels
-- maxCost
-- streamEnabled
-```
+### 7.2 Provider 能力目录
 
-交付物：
+缺点：
 
-1. `spintale-ai-runtime` 模块。
-2. 统一执行入口。
-3. Run event 事件。
-4. runtime 单元测试。
+1. 当前 provider 更像简单模型封装。
+2. 缺少模型能力目录。
+3. 缺少 fallback 和 health check。
 
-验收标准：
+升级：
 
-1. Chat 调用能拿到 runId。
-2. RAG 调用能记录 retrieval span。
-3. Agent 调用能记录 step span。
-4. 每次调用能记录 token/cost/latency。
+1. `ModelCapability`：chat、streaming、toolCalling、embedding、rerank、vision、jsonSchema。
+2. `ModelCatalog`：模型名称、上下文长度、成本、能力、启用状态。
+3. `ProviderRegistry`：注册所有模型供应商。
+4. `ModelRouter`：按任务类型选择模型。
+5. `ProviderHealthCheck`：检测 provider 可用性。
 
----
+验收：
 
-## 8.3 阶段三：Provider 与模型路由升级
+1. 普通聊天、RAG、Agent、JSON 输出可以选择不同模型。
+2. provider 不可用时可 fallback。
+3. console 可通过 runtime 展示 provider 状态和模型能力。
 
-目标：从固定 provider 调用升级成模型能力目录和路由。
+### 7.3 RAG 重建
 
-周期建议：2 周。
+缺点：
 
-任务：
+1. retrieval 名称过窄。
+2. 文档解析、chunk、metadata、索引、检索、回答没有完整 pipeline。
+3. 缺少 citation。
+4. 缺少检索调试和评估。
 
-1. 设计 `ModelProvider`。
-2. 设计 `ModelCapability`。
-3. 设计 `ModelCatalog`。
-4. 设计 `ModelRoutingPolicy`。
-5. 支持 OpenAI-compatible provider。
-6. 支持 Ollama/local provider。
-7. 支持 embedding provider。
-8. 支持 rerank provider。
-9. 增加 fallback。
-10. 增加 provider health check。
-
-模型能力：
+升级：
 
 ```text
-ModelCapability
-- chat
-- streaming
-- toolCalling
-- structuredOutput
-- vision
-- embedding
-- rerank
-- maxContextTokens
-- supportsJsonSchema
+Ingestion Pipeline:
+Document -> Parser -> Cleaner -> Chunker -> Metadata -> Embedding -> Index
+
+Retrieval Pipeline:
+Query -> Rewrite -> Filter -> Hybrid Search -> Rerank -> Context Build
+
+Answer Pipeline:
+Context -> Prompt -> Generate -> Citation -> Grounding Check -> Response
 ```
 
-交付物：
+验收：
 
-1. provider registry。
-2. model catalog。
-3. routing policy。
-4. provider health check。
+1. 文档有状态机：uploaded、parsing、chunking、embedding、indexed、failed。
+2. chunk 可查询、可调试。
+3. 回答可返回 citation。
+4. 检索过程可 trace。
 
-验收标准：
+### 7.4 Agent / Tool / Memory
 
-1. 能按任务类型选择模型。
-2. provider 不可用时能 fallback。
-3. console 能查看 provider 状态。
-4. 业务层不感知具体 SDK。
+缺点：
 
----
+1. Agent 执行不可追踪。
+2. Tool 没有完整风险治理。
+3. Memory 与 RAG 边界不清。
 
-## 8.4 阶段四：RAG 重建
+升级：
 
-目标：从“向量检索”升级为完整知识库 RAG。
+1. `AgentDefinition`、`AgentRun`、`AgentStep`。
+2. `ToolDefinition`：inputSchema、outputSchema、permissionCode、riskLevel、timeoutMs。
+3. Tool 分级：L0 只读、L1 低风险写、L2 业务写、L3 高风险。
+4. Memory 分层：short-term、summary、long-term。
+5. Guardrail：输入保护、输出保护、工具参数保护。
 
-周期建议：3-5 周。
-
-任务：
-
-1. 将 `spintale-ai-retrieval` 改造为 `spintale-ai-rag`。
-2. 建立知识库模型。
-3. 建立文档状态机。
-4. 建立 ingestion pipeline。
-5. 建立 retrieval pipeline。
-6. 建立 answer pipeline。
-7. 支持 PDF/Word/Markdown/Text。
-8. 支持 chunk metadata。
-9. 支持 hybrid search。
-10. 支持 rerank。
-11. 支持 citation。
-12. 支持 RAG trace。
-
-文档状态：
-
-```text
-uploaded
-parsing
-chunking
-embedding
-indexed
-failed
-archived
-```
-
-核心表：
-
-```text
-ai_knowledge_base
-ai_document
-ai_document_chunk
-ai_document_index_job
-ai_retrieval_trace
-```
-
-交付物：
-
-1. 知识库管理接口。
-2. 文档上传接口。
-3. 索引任务。
-4. 检索调试接口。
-5. citation answer。
-
-验收标准：
-
-1. 文档可上传、解析、索引。
-2. chunk 可查询。
-3. 回答能返回引用来源。
-4. 检索过程有 trace。
-5. 支持重新索引。
-
----
-
-## 8.5 阶段五：Agent、Tool、Memory 升级
-
-目标：Agent 可控，Tool 可审计，Memory 可治理。
-
-周期建议：3-4 周。
-
-任务：
-
-1. 设计 AgentDefinition。
-2. 设计 AgentRun。
-3. 设计 AgentStep。
-4. 设计 ToolDefinition。
-5. Tool 增加 input/output schema。
-6. Tool 增加权限码。
-7. Tool 增加风险等级。
-8. Tool 增加人工确认。
-9. Memory 拆 short-term、summary、long-term。
-10. Agent 调用接入 runtime trace。
-
-Tool 风险等级：
-
-| 等级 | 说明 | 策略 |
-| --- | --- | --- |
-| L0 | 只读工具 | 自动执行 |
-| L1 | 低风险写入 | 自动执行并记录 |
-| L2 | 业务写入 | 权限校验和审计 |
-| L3 | 删除、发布、外部影响 | 人工确认 |
-
-核心表：
-
-```text
-ai_agent
-ai_agent_run
-ai_agent_step
-ai_tool
-ai_tool_call
-ai_memory_entry
-```
-
-交付物：
-
-1. Agent 配置。
-2. Tool 注册中心。
-3. Tool 权限检查。
-4. Agent run history。
-5. Memory 管理。
-
-验收标准：
+验收：
 
 1. Agent 每一步可追踪。
-2. Tool 每次调用可审计。
-3. 高风险 Tool 需要确认。
-4. Memory 可查询、可删除、可过期。
+2. Tool 每次调用有审计。
+3. 高风险 Tool 支持人工确认。
+4. Memory 可过期、可删除、可检索。
 
----
+### 7.5 Console 产品化
 
-## 8.6 阶段六：AI Console 完善
+缺点：
 
-目标：从接口能力升级为可运营控制台。
+1. AI 管理入口不清晰。
+2. RuoYi 权限、日志、菜单容易侵入 starter。
+3. 调用日志、成本、trace、评估缺少统一界面。
 
-周期建议：4-6 周。
-
-功能菜单建议：
+升级菜单：
 
 ```text
 AI 控制台
@@ -2233,8 +1239,6 @@ AI 控制台
 │   ├── Model Catalog
 │   └── 路由策略
 ├── Prompt 管理
-│   ├── Prompt 模板
-│   └── Prompt 调试
 ├── 知识库
 │   ├── 知识库列表
 │   ├── 文档管理
@@ -2247,81 +1251,33 @@ AI 控制台
 ├── 运行观测
 │   ├── 调用日志
 │   ├── Trace 详情
-│   ├── Token 成本
 │   └── 异常统计
+├── 成本统计
 └── 评估
-    ├── Eval Dataset
-    ├── Eval Case
-    └── Eval Report
 ```
-
-任务：
-
-1. 建立 console controller。
-2. 建立 console application service。
-3. 建立 DTO/VO。
-4. 接入 RuoYi 权限。
-5. 接入 RuoYi 菜单。
-6. 接入操作日志。
-7. 接入数据权限。
-
-验收标准：
-
-1. 管理端能配置 provider。
-2. 管理端能管理知识库。
-3. 管理端能查看 run history。
-4. 管理端能查看 trace。
-5. 管理端能查看成本统计。
 
 ---
 
-## 8.7 阶段七：Evaluation 与持续优化
+## 8. 数据库规划
 
-目标：模型、RAG、Prompt、Agent 迭代有质量依据。
-
-周期建议：持续建设。
-
-任务：
-
-1. 建立 eval dataset。
-2. 建立 eval case。
-3. 建立 RAG recall@k。
-4. 建立 citation accuracy。
-5. 建立 answer groundedness。
-6. 建立 Agent task success。
-7. 建立 prompt regression。
-8. 建立 provider A/B test。
-
-核心表：
+### 8.1 Runtime / 观测
 
 ```text
-ai_eval_dataset
-ai_eval_case
-ai_eval_result
-ai_eval_metric
+ai_run
+ai_run_span
+ai_cost_usage
 ```
 
-验收标准：
-
-1. RAG 改 chunk 策略前后能对比。
-2. Prompt 修改前后能回归。
-3. Provider 切换前后能评估。
-4. Agent 工具调用成功率可统计。
-
----
-
-## 9. 数据库规划
-
-## 9.1 第一阶段必需表
+### 8.2 Provider / 模型
 
 ```text
 ai_provider_config
 ai_model_config
-ai_run
-ai_run_span
+ai_model_capability
+ai_routing_policy
 ```
 
-## 9.2 RAG 表
+### 8.3 RAG
 
 ```text
 ai_knowledge_base
@@ -2331,7 +1287,7 @@ ai_document_index_job
 ai_retrieval_trace
 ```
 
-## 9.3 Agent / Tool / Memory 表
+### 8.4 Agent / Tool / Memory
 
 ```text
 ai_agent
@@ -2342,7 +1298,7 @@ ai_tool_call
 ai_memory_entry
 ```
 
-## 9.4 后续评估表
+### 8.5 Evaluation
 
 ```text
 ai_eval_dataset
@@ -2353,60 +1309,260 @@ ai_eval_metric
 
 ---
 
-## 10. 最终优先级
+## 9. 目标能力闭环
 
-| 优先级 | 事项 | 说明 |
+本节描述目标态的功能闭环和结构归属。
+
+### 9.1 Runtime 闭环
+
+目标结构来自 Spring AI 的 ChatClient/Advisor/Observability 和 OpenAI Agents SDK 的 tracing 思路。
+
+```text
+Request
+-> AiRunContext
+-> AdvisorChain
+-> ModelRouter
+-> AiExecutor
+-> Provider Model
+-> AiRunLedger
+-> AiRunSpan / CostUsage / ErrorRecord
+-> Response
+```
+
+归属：
+
+| 能力 | 模块 | 说明 |
 | --- | --- | --- |
-| P0 | 模块命名统一 | 先解决 `spintale-admin` 与 AI 管理模块混淆问题 |
-| P0 | 新增 `spintale-ai-console` | 作为 RuoYi AI 控制台集成层 |
-| P0 | 新增 `spintale-ai-runtime` | 所有 AI 调用统一进入 runtime |
-| P0 | starter 去 RuoYi | 保持 starter 可复用 |
-| P1 | Provider capability | 支持模型路由和 fallback |
-| P1 | RAG pipeline | 提升知识库质量 |
-| P1 | Run ledger | 解决观测和成本问题 |
-| P1 | Tool 权限审计 | 生产安全底线 |
-| P2 | Agent run history | Agent 可调试、可追踪 |
-| P2 | Console 菜单完善 | 产品化运营 |
-| P3 | Workflow 可视化 | 后续增强，不作为早期重点 |
-| P3 | 多 Agent | 有明确业务场景后再引入 |
+| ChatClient / StreamingChatClient | `runtime.client` | 对外统一调用入口 |
+| AdvisorChain | `runtime.advisor` | 安全、缓存、观测、上下文注入 |
+| ModelRouter | `runtime.routing` | 按任务类型选择模型，不放 provider |
+| ModelAdminFacade | `runtime.model` | 向 console 暴露模型目录、供应商状态、路由策略管理能力 |
+| Retry/Fallback/Budget | `runtime.policy` | 执行策略统一收敛 |
+| Run/Span/Cost | `runtime.observability` | 所有 AI 调用统一记账和追踪 |
+
+### 9.2 Provider 闭环
+
+目标结构来自 Spring AI 的 Model 抽象和 LangChain4j 的 Java Provider 生态。
+
+```text
+ModelProvider
+-> ModelCatalog
+-> ModelCapability
+-> ChatModel / EmbeddingModel / RerankModel
+-> ProviderHealth
+```
+
+归属：
+
+| 能力 | 模块 | 说明 |
+| --- | --- | --- |
+| OpenAI/OpenAI-compatible/Ollama/local | `provider.*` | 模型 SDK 适配 |
+| LangChain4j adapter | `provider.langchain4j` | 只作为内部适配层 |
+| ModelCapability | `provider.catalog` + `core.model` | 能力定义稳定，配置在 provider |
+| ProviderHealth | `provider.catalog` | 供 console 查询，供 runtime 路由参考 |
+
+边界：
+
+1. provider 不做 routing policy。
+2. provider 不知道 RAG、Agent、Console。
+3. provider 不向外泄漏 LangChain4j/OpenAI SDK 类型。
+
+### 9.3 RAG 闭环
+
+目标结构来自 LlamaIndex 的 ingestion/index/retrieval、Haystack 的 pipeline component、RAGFlow 的 chunk/citation 可解释性。
+
+```text
+Document
+-> Parser
+-> Cleaner
+-> Chunker
+-> Metadata Enricher
+-> Embedding
+-> Vector Index
+-> Retrieval
+-> Rerank
+-> Context Build
+-> Answer
+-> Citation
+-> Evaluation
+```
+
+归属：
+
+| 能力 | 模块 | 说明 |
+| --- | --- | --- |
+| KnowledgeBase | `rag.knowledge` | 知识库领域对象 |
+| Document lifecycle | `rag.document` | 文档版本、状态、解析结果 |
+| Ingestion pipeline | `rag.ingestion` | parse/clean/chunk/metadata |
+| Vector index | `rag.vector`、`rag.adapter.milvus` | 向量库抽象和 Milvus 适配 |
+| Retrieval/Rerank | `rag.retrieval` | 检索链路，不直接依赖 provider |
+| Citation | `rag.citation` | 回答引用和来源定位 |
+| RAG Eval | `rag.eval` | recall、citation coverage、groundedness |
+
+边界：
+
+1. RAG 使用 runtime 的 EmbeddingClient、RerankClient、ChatClient。
+2. RAG 不直接依赖 provider。
+3. RAG 不直接依赖 agent。
+4. RAG 暴露给 Agent 时以 Tool 形式出现。
+
+### 9.4 Agent 闭环
+
+目标结构来自 Semantic Kernel 的 Plugin/Function、OpenAI Agents SDK 的 AgentRun/ToolCall/Guardrail、LangGraph 的 checkpoint/human-in-the-loop。
+
+```text
+AgentDefinition
+-> AgentRun
+-> AgentStep
+-> ToolSelection
+-> ToolInvocation
+-> Guardrail
+-> HumanApproval
+-> Checkpoint
+-> FinalResponse
+```
+
+归属：
+
+| 能力 | 模块 | 说明 |
+| --- | --- | --- |
+| AgentDefinition | `agent.definition` | Agent 配置和能力描述 |
+| AgentRun / AgentStep | `agent.run` | 运行历史和调试核心 |
+| ReAct loop | `agent.react` | 默认执行策略 |
+| ToolPlugin / ToolDefinition | `agent.tool` | 工具注册、schema、权限、风险等级 |
+| Memory | `agent.memory` | short-term、summary、long-term |
+| Guardrail | `agent.guardrail` | 输入、输出、工具参数保护 |
+| HumanApproval | `agent.approval` | 高风险工具审批 |
+| Checkpoint | `agent.checkpoint` | 长任务暂停、恢复、人工介入 |
+
+边界：
+
+1. Agent 调模型统一走 runtime。
+2. Agent 不直接依赖 provider。
+3. Agent 不直接依赖 RAG。
+4. Agent 不直接依赖 RuoYi。
+5. RuoYi 权限以 Tool 元数据和 console 编排方式注入。
+
+### 9.5 Console 闭环
+
+目标结构来自 Dify 的运营控制台和 RAGFlow 的文档/chunk/citation 可视化。
+
+```text
+Model Console
+Knowledge Console
+Document/Chunk Console
+Agent/Tool Console
+Run/Trace Console
+Cost Console
+Evaluation Console
+Feedback Console
+```
+
+归属：
+
+| 能力 | 模块 | 说明 |
+| --- | --- | --- |
+| 模型配置 | `console.controller` + `console.application` + `runtime` | 通过 runtime 管理门面维护 provider config、model catalog、routing policy |
+| 知识库管理 | `console.controller` + `rag` | 文档上传、索引、chunk 查看 |
+| Agent 管理 | `console.controller` + `agent` | Agent 配置、Tool、审批、运行记录 |
+| 运行观测 | `console.application` + `runtime` | run/span/cost/error 查询 |
+| 评估管理 | `console.controller` + `rag.eval/runtime eval` | eval dataset、case、result |
+| 反馈闭环 | `console.application` | 用户反馈进入 eval 数据集 |
+
+边界：
+
+1. Console 是唯一 RuoYi 绑定层。
+2. Controller、VO、AjaxResult、权限注解、操作日志都只在 console。
+3. starter 不提供 Web API。
+4. 底层 AI 模块不依赖 console。
+
+### 9.6 不进入目标主结构的能力
+
+| 能力 | 目标处理 |
+| --- | --- |
+| 多 Agent 自动协作 | 作为 `agent` 后续能力，不独立成模块 |
+| 可视化 Workflow | 由 `agent.workflow` 预留，不作为早期核心结构 |
+| 插件市场 | 不进入目标主结构，只保留 ToolPlugin 扩展点 |
+| OCR/版面解析 | 作为 `rag.adapter.document` 扩展，不污染 RAG 主接口 |
+| Temporal | 可选 adapter 或后续独立 `spintale-ai-agent-temporal` |
+| 独立 LLMOps SaaS | 不作为 SpinTale 当前目标，Console 只做 RuoYi AI 管理控制台 |
 
 ---
 
-## 11. 最终推荐路线
+## 10. 依赖治理落地规则
 
-最务实的路线是：
+### 10.1 Maven 规则
 
-```text
-第一步：确定命名和模块边界
-第二步：做 runtime
-第三步：做 provider routing
-第四步：重建 RAG
-第五步：治理 Agent / Tool / Memory
-第六步：完善 console
-第七步：增加 evaluation
-```
+1. 每个模块只声明自己代码直接使用的模块。
+2. 不为了“完整”重复声明传递依赖。
+3. `starter` 只声明需要自动装配的能力模块。
+4. `console` 是唯一声明 RuoYi 模块依赖的 AI 模块。
+5. `core` 不声明任何 AI 模块依赖。
 
-不要一开始就拆出过多模块，也不要一开始就做低代码 Workflow 或多 Agent。当前项目最需要先解决的是：
+### 10.2 ArchUnit 规则
 
-1. 命名清楚。
-2. 边界清楚。
-3. 调用链清楚。
-4. 运行记录清楚。
-5. RAG 和 Agent 后续能自然扩展。
-
-推荐最终结构再次确认：
+建议增加架构测试：
 
 ```text
-SpinTale
-├── spintale-admin
-├── spintale-common
-├── spintale-framework
-├── spintale-system
-├── spintale-ai-core
-├── spintale-ai-runtime
-├── spintale-ai-provider
-├── spintale-ai-rag
-├── spintale-ai-agent
-├── spintale-ai-starter
-└── spintale-ai-console
+core 不允许访问 org.springframework..、dev.langchain4j..、com.spintale.common..、com.spintale.framework..
+runtime 不允许访问 provider、rag、agent、starter、console
+provider 不允许访问 runtime、rag、agent、starter、console
+rag 不允许访问 provider、agent、starter、console
+agent 不允许访问 provider、rag、starter、console
+starter 不允许访问 console、spintale-common、spintale-framework、spintale-system
+console 不允许被任何 AI 底层模块访问
+console 默认不允许访问 provider；模型目录、供应商状态、路由策略通过 runtime 管理门面访问
 ```
+
+### 10.3 包命名规则
+
+推荐：
+
+```text
+com.spintale.ai.core
+com.spintale.ai.runtime
+com.spintale.ai.provider
+com.spintale.ai.rag
+com.spintale.ai.agent
+com.spintale.ai.starter
+com.spintale.ai.console
+```
+
+避免所有模块都使用：
+
+```text
+com.spintale.ai.infrastructure
+```
+
+因为 `infrastructure` 过泛，容易继续把不同层次代码混在一起。
+
+---
+
+## 11. 最终建议
+
+最终直接依赖关系应收敛为：
+
+```text
+admin -> starter, console
+console -> runtime, rag, agent, RuoYi modules
+starter -> runtime, provider, rag, agent
+rag -> runtime, core
+agent -> runtime, core
+runtime -> core
+provider -> core
+core -> none
+```
+
+核心原则：
+
+```text
+console 管 RuoYi
+starter 管装配
+runtime 管执行
+core 管抽象
+provider 管模型
+rag 管知识库
+agent 管智能体、工具、记忆、流程
+```
+
+这套结构优先解决直接依赖树混乱问题，再逐步升级 RAG、Agent、Tool、Memory、Console 和 Evaluation。
