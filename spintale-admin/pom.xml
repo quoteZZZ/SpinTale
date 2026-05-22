@@ -55,6 +55,12 @@
             <artifactId>spintale-ai-starter</artifactId>
         </dependency>
 
+        <!-- AI console module -->
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-ai-console</artifactId>
+        </dependency>
+
         <!-- Jasypt Configuration Encryption -->
         <dependency>
             <groupId>com.github.ulisesbocchio</groupId>

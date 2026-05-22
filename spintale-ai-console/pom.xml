@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.spintale</groupId>
+        <artifactId>spintale</artifactId>
+        <version>3.9.2</version>
+    </parent>
+
+    <artifactId>spintale-ai-console</artifactId>
+    <packaging>jar</packaging>
+
+    <name>SpinTale AI Console</name>
+    <description>RuoYi AI management console, Controller/VO/permission/operation log/Mapper</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-ai-runtime</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-ai-rag</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-ai-agent</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-common</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-framework</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.spintale</groupId>
+            <artifactId>spintale-system</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.fastjson2</groupId>
+            <artifactId>fastjson2</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

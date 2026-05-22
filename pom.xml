@@ -326,13 +326,19 @@
 
             <dependency>
                 <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai-api</artifactId>
+                <artifactId>spintale-ai-runtime</artifactId>
                 <version>${spintale.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai-retrieval</artifactId>
+                <artifactId>spintale-ai-provider</artifactId>
+                <version>${spintale.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.spintale</groupId>
+                <artifactId>spintale-ai-rag</artifactId>
                 <version>${spintale.version}</version>
             </dependency>
 
@@ -344,13 +350,13 @@
 
             <dependency>
                 <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai-providers</artifactId>
+                <artifactId>spintale-ai-starter</artifactId>
                 <version>${spintale.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>com.spintale</groupId>
-                <artifactId>spintale-ai-starter</artifactId>
+                <artifactId>spintale-ai-console</artifactId>
                 <version>${spintale.version}</version>
             </dependency>
 
@@ -360,14 +366,15 @@
     <modules>
         <module>spintale-admin</module>
         <module>spintale-framework</module>
-        <module>spintale-ai-core</module>
-        <module>spintale-ai-api</module>
-        <module>spintale-ai-agent</module>
-        <module>spintale-ai-retrieval</module>
-        <module>spintale-ai-providers</module>
-        <module>spintale-ai-starter</module>
-        <module>spintale-system</module>
         <module>spintale-common</module>
+        <module>spintale-system</module>
+        <module>spintale-ai-core</module>
+        <module>spintale-ai-runtime</module>
+        <module>spintale-ai-provider</module>
+        <module>spintale-ai-rag</module>
+        <module>spintale-ai-agent</module>
+        <module>spintale-ai-starter</module>
+        <module>spintale-ai-console</module>
     </modules>
     <packaging>pom</packaging>
 

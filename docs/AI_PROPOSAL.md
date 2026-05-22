@@ -128,11 +128,9 @@ spintale-ai-provider
 └── spintale-ai-core
 
 spintale-ai-rag
-├── spintale-ai-core
 └── spintale-ai-runtime
 
 spintale-ai-agent
-├── spintale-ai-core
 └── spintale-ai-runtime
 
 spintale-ai-starter
@@ -159,9 +157,9 @@ spintale-admin
 说明：
 
 1. `spintale-ai-provider` 不直接依赖 `runtime`，避免 provider 和 runtime 形成互相感知。Provider 只实现 `core` 中定义的模型接口。
-2. `spintale-ai-rag` 不直接依赖 `provider`。RAG 需要 embedding、rerank、chat 时，通过 `core` 抽象接口和 `runtime` 执行入口获得能力。
+2. `spintale-ai-rag` 只直接依赖 `runtime`。RAG 需要 embedding、rerank、chat 时，通过 runtime 执行入口获得能力，`core` 由 runtime 传递引入，不在 RAG POM 重复声明。
 3. `spintale-ai-agent` 不直接依赖 `provider`。Agent 调模型统一走 `runtime`。
-4. `spintale-ai-agent` 不直接依赖 `rag`。Agent 需要知识库能力时，将 RAG 暴露为 Tool，由运行期注入。
+4. `spintale-ai-agent` 只直接依赖 `runtime`。Agent 需要知识库能力时，将 RAG 暴露为 Tool，由运行期注入；`core` 由 runtime 传递引入，不在 Agent POM 重复声明。
 5. `spintale-ai-starter` 可以直接依赖 `provider/rag/agent/runtime`，因为它负责自动装配。
 6. `spintale-ai-console` 可以直接依赖 RuoYi 模块，因为它就是 RuoYi 集成层。
 7. `spintale-ai-console` 默认不直接依赖 `provider`。模型供应商配置、模型能力目录、健康状态应通过 `runtime` 的管理门面或查询服务暴露给 console。
@@ -201,10 +199,7 @@ flowchart TB
     STARTER --> AGENT
 
     RAG --> RUNTIME
-    RAG --> CORE
-
     AGENT --> RUNTIME
-    AGENT --> CORE
 
     RUNTIME --> CORE
     PROVIDER --> CORE
@@ -253,8 +248,8 @@ SpinTale
 
 | 可选模块 | 触发条件 | 直接依赖 |
 | --- | --- | --- |
-| `spintale-ai-evaluation` | RAG/Agent/Prompt 评估开始独立产品化 | `runtime, rag, agent, core` |
-| `spintale-ai-agent-temporal` | Temporal 成为可替换的长任务执行后端 | `agent, runtime, core` |
+| `spintale-ai-evaluation` | RAG/Agent/Prompt 评估开始独立产品化 | `runtime, rag, agent` |
+| `spintale-ai-agent-temporal` | Temporal 成为可替换的长任务执行后端 | `agent` |
 
 ### 3.5 各模块内部目标包结构
 
@@ -500,13 +495,13 @@ console 是唯一可以直接出现 RuoYi 类型的位置，例如 `BaseControll
 | Token/Cost/Trace | `spintale-ai-runtime` | `runtime.observability` | `core` | `console/RuoYi` |
 | 模型 SDK 适配 | `spintale-ai-provider` | `provider.openai`、`provider.ollama`、`provider.langchain4j` | `core` | `runtime/rag/agent` |
 | 模型能力目录 | `spintale-ai-provider` | `provider.catalog` | `core` | `console/RuoYi` |
-| 知识库 | `spintale-ai-rag` | `rag.knowledge` | `runtime/core` | `agent/provider/console` |
-| 文档解析和索引 | `spintale-ai-rag` | `rag.document`、`rag.ingestion`、`rag.vector` | `runtime/core` | `agent/console` |
-| 检索、重排、引用 | `spintale-ai-rag` | `rag.retrieval`、`rag.citation` | `runtime/core` | `provider/agent` |
-| Agent 执行 | `spintale-ai-agent` | `agent.run`、`agent.react` | `runtime/core` | `rag/provider/console` |
-| Tool/Plugin | `spintale-ai-agent` | `agent.tool` | `runtime/core` | `console/RuoYi` |
-| Memory | `spintale-ai-agent` | `agent.memory` | `runtime/core` | `rag/provider` |
-| Guardrail/Approval/Checkpoint | `spintale-ai-agent` | `agent.guardrail`、`agent.approval`、`agent.checkpoint` | `runtime/core` | `console/RuoYi` |
+| 知识库 | `spintale-ai-rag` | `rag.knowledge` | `runtime` | `core/agent/provider/console` |
+| 文档解析和索引 | `spintale-ai-rag` | `rag.document`、`rag.ingestion`、`rag.vector` | `runtime` | `core/agent/console` |
+| 检索、重排、引用 | `spintale-ai-rag` | `rag.retrieval`、`rag.citation` | `runtime` | `core/provider/agent` |
+| Agent 执行 | `spintale-ai-agent` | `agent.run`、`agent.react` | `runtime` | `core/rag/provider/console` |
+| Tool/Plugin | `spintale-ai-agent` | `agent.tool` | `runtime` | `core/console/RuoYi` |
+| Memory | `spintale-ai-agent` | `agent.memory` | `runtime` | `core/rag/provider` |
+| Guardrail/Approval/Checkpoint | `spintale-ai-agent` | `agent.guardrail`、`agent.approval`、`agent.checkpoint` | `runtime` | `core/console/RuoYi` |
 | 自动配置 | `spintale-ai-starter` | `starter.autoconfigure` | `runtime/provider/rag/agent` | `console/RuoYi` |
 | 配置属性 | `spintale-ai-starter` | `starter.properties` | 各 AI 能力模块 | `console/RuoYi` |
 | AI 管理接口 | `spintale-ai-console` | `console.controller` | `runtime/rag/agent/RuoYi` | `provider`、被底层模块依赖 |
